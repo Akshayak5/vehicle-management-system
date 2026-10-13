@@ -1,3 +1,5 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fleet Desk</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1033,6 +1035,7 @@
     }
     var sel = -1;
     for (k = 0; k < curGroups.length; k++) if (fits(curGroups[k]) && curGroups[k].model === bookModel) { sel = k; break; }
+    if (sel < 0) for (k = 0; k < curGroups.length; k++) if (fits(curGroups[k]) && avail(curGroups[k]) > 0) { sel = k; break; }
     if (sel < 0) for (k = 0; k < curGroups.length; k++) if (fits(curGroups[k])) { sel = k; break; }
     var sm = $('bModel');
     sm.innerHTML = curGroups.length ? curGroups.map(function (g, i) {
