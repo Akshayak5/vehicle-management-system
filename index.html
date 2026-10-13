@@ -1,0 +1,633 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Fleet Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: single column workspace. Road-sign type, plates styled like Indian number plates
+     (white private, yellow commercial), one dashed lane marking under the header. */
+  :root {
+    --bg: #EDF0F1;
+    --surface: #FFFFFF;
+    --surface-2: #F4F6F7;
+    --ink: #13202B;
+    --ink-2: #51606C;
+    --line: #D5DBDF;
+    --accent: #0E6B4D;
+    --accent-ink: #FFFFFF;
+    --accent-soft: #DCEFE7;
+    --warn: #8A5200;
+    --warn-soft: #FBEBCF;
+    --bad: #A12B2B;
+    --bad-soft: #F7DEDE;
+    --lane: #E0A800;
+    --plate-w: #F4F4EF;
+    --plate-y: #F2CB3A;
+    --plate-ink: #1A1A1A;
+    --f-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+    --f-body: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --f-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0F161B; --surface: #172027; --surface-2: #1D2830; --ink: #E6ECEF; --ink-2: #9AA9B3;
+      --line: #2B3841; --accent: #4CC38F; --accent-ink: #06261A; --accent-soft: #14352A;
+      --warn: #E9B25A; --warn-soft: #3A2C12; --bad: #F08A8A; --bad-soft: #3C1D1F; --lane: #E9B25A;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0F161B; --surface: #172027; --surface-2: #1D2830; --ink: #E6ECEF; --ink-2: #9AA9B3;
+    --line: #2B3841; --accent: #4CC38F; --accent-ink: #06261A; --accent-soft: #14352A;
+    --warn: #E9B25A; --warn-soft: #3A2C12; --bad: #F08A8A; --bad-soft: #3C1D1F; --lane: #E9B25A;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45;
+    padding-inline: 16px; padding-block: 20px 48px;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+  h1, h2, h3 { font-family: var(--f-display); text-transform: uppercase; letter-spacing: .05em; margin: 0; text-wrap: balance; }
+  h1 { font-size: clamp(32px, 6vw, 44px); line-height: 1; }
+  h2 { font-size: 22px; }
+  h3 { font-size: 17px; color: var(--ink-2); }
+  .sub { margin: 6px 0 0; color: var(--ink-2); }
+  .roadline { height: 4px; margin-top: 14px; background: repeating-linear-gradient(90deg, var(--lane) 0 18px, transparent 18px 32px); }
+
+  .tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--line); }
+  .tab {
+    font: 700 18px var(--f-display); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap;
+    background: none; border: 0; border-bottom: 3px solid transparent; color: var(--ink-2); padding: 10px 14px; cursor: pointer;
+  }
+  .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+  .tab:focus-visible, .btn:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .panel { display: flex; flex-direction: column; gap: 20px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-width: 0; }
+  .card > h2 { margin-bottom: 12px; }
+  .split { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+  @media (min-width: 960px) { .split { grid-template-columns: minmax(0, 1fr) 300px; } }
+  .two { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+  @media (min-width: 860px) { .two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+  .stack { display: grid; gap: 12px; }
+
+  label, .lbl { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); margin-bottom: 4px; }
+  input, select {
+    font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+    padding: 7px 10px; min-height: 38px; max-width: 100%; width: 100%;
+  }
+  td select { width: auto; min-height: 34px; padding: 4px 8px; }
+  .row { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
+  .row input { flex: 1 1 100px; width: auto; min-width: 0; }
+  .check { display: flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-size: 15px; font-weight: 500; color: var(--ink); }
+  .check input { width: 18px; min-height: 18px; }
+
+  .btn {
+    font: 600 15px var(--f-body); border-radius: 6px; padding: 8px 14px; min-height: 38px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--surface-2); color: var(--ink);
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn.danger { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
+  .btn.small { min-height: 32px; padding: 4px 10px; font-size: 14px; }
+  .btn.ghost { background: transparent; }
+
+  .toolbar { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 8px; }
+  .note { margin: 6px 0 12px; min-height: 1.4em; color: var(--ink-2); font-size: 14px; }
+  .note.ok { color: var(--accent); }
+  .note.err { color: var(--bad); }
+  .caption { margin: 10px 0 0; font-size: 13px; color: var(--ink-2); }
+
+  .statrow { display: flex; flex-wrap: wrap; gap: 8px 28px; }
+  .stat { display: flex; align-items: baseline; gap: 8px; }
+  .stat b { font: 700 28px var(--f-display); font-variant-numeric: tabular-nums; }
+  .stat span { color: var(--ink-2); font-size: 14px; }
+
+  .tablewrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); padding: 8px 10px; border-bottom: 2px solid var(--line); white-space: nowrap; }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  td.num, th.num { font-variant-numeric: tabular-nums; text-align: right; }
+  td.right { text-align: right; }
+  tr.hl td { background: var(--accent-soft); }
+  td.empty { text-align: center; color: var(--ink-2); padding: 28px 10px; }
+
+  .plate {
+    display: inline-block; font: 700 17px var(--f-display); letter-spacing: .09em; white-space: nowrap;
+    padding: 1px 9px; border: 2px solid var(--plate-ink); border-radius: 4px; background: var(--plate-w); color: var(--plate-ink);
+  }
+  .plate.y { background: var(--plate-y); }
+  .pill { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .st0 { background: var(--accent-soft); color: var(--accent); }
+  .st1 { background: var(--warn-soft); color: var(--warn); }
+  .st2 { background: var(--bad-soft); color: var(--bad); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; font-weight: 500; }
+  .chip small { color: var(--ink-2); margin-left: 6px; }
+
+  table.matrix { width: auto; border-collapse: separate; border-spacing: 3px; font-family: var(--f-mono); font-size: 13px; }
+  .matrix th { text-align: center; padding: 4px 6px; border: 0; color: var(--ink-2); font-family: var(--f-mono); text-transform: none; letter-spacing: 0; font-size: 12px; }
+  .matrix th.rh { text-align: left; position: sticky; left: 0; background: var(--surface); font-family: var(--f-body); font-size: 13px; padding-right: 10px; }
+  .matrix td { min-width: 44px; text-align: center; padding: 6px 4px; border: 0; border-radius: 4px; background: var(--surface-2); }
+  .matrix td.on { background: var(--accent); color: var(--accent-ink); font-weight: 500; }
+  .matrix td.off { color: var(--ink-2); background: var(--bad-soft); }
+  .matrix td.diag { color: var(--ink-2); }
+  .banner { padding: 10px 12px; border-radius: 6px; margin-bottom: 12px; font-weight: 500; }
+  .banner.ok { background: var(--accent-soft); color: var(--accent); }
+  .banner.bad { background: var(--warn-soft); color: var(--warn); }
+
+  .route-total { font: 700 56px var(--f-display); line-height: 1; font-variant-numeric: tabular-nums; }
+  .route-total small { font-size: 22px; color: var(--ink-2); margin-left: 6px; }
+  .legs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+  .legs .km { font: 500 13px var(--f-mono); color: var(--ink-2); }
+  .legs .arrow { color: var(--lane); font-weight: 700; }
+
+  .nearest { background: var(--accent-soft); }
+  footer { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; color: var(--ink-2); font-size: 13px; }
+  @media (prefers-reduced-motion: no-preference) { .btn { transition: background .12s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Fleet Desk</h1>
+    <p class="sub">Vehicles, roads and routes in one place.</p>
+    <div class="roadline" aria-hidden="true"></div>
+  </header>
+
+  <div class="tabs" role="tablist" id="tabs" aria-label="Sections">
+    <button class="tab" role="tab" data-tab="fleet" aria-selected="true">Fleet</button>
+    <button class="tab" role="tab" data-tab="network" aria-selected="false" tabindex="-1">Road network</button>
+    <button class="tab" role="tab" data-tab="routes" aria-selected="false" tabindex="-1">Shortest route</button>
+    <button class="tab" role="tab" data-tab="dispatch" aria-selected="false" tabindex="-1">Dispatch</button>
+  </div>
+
+  <!-- FLEET -->
+  <section id="p-fleet" class="panel" role="tabpanel">
+    <div class="statrow" id="stats"></div>
+    <div class="split">
+      <div class="card">
+        <div class="toolbar">
+          <div>
+            <label for="sortMode">Sort by</label>
+            <select id="sortMode">
+              <option value="stored">Order added</option>
+              <option value="plate">Plate, A to Z</option>
+              <option value="mileage">Mileage, highest first</option>
+              <option value="id">ID</option>
+            </select>
+          </div>
+          <div>
+            <label for="dueAt">Service due at (km)</label>
+            <input id="dueAt" type="number" min="0" step="1000" value="80000">
+          </div>
+          <form id="findForm">
+            <label for="findId">Find by ID</label>
+            <div class="row"><input id="findId" type="number" min="1" placeholder="e.g. 4"><button class="btn" type="submit">Find</button></div>
+          </form>
+        </div>
+        <p id="findMsg" class="note" aria-live="polite"></p>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th class="num">ID</th><th>Plate</th><th>Model</th><th>Type</th><th class="num">Mileage (km)</th><th>Status</th><th>Location</th><th></th></tr></thead>
+            <tbody id="fleetBody"></tbody>
+          </table>
+        </div>
+        <p class="caption">Lists are presorted with merge sort. Find by ID runs a binary search on the sorted records.</p>
+      </div>
+
+      <form id="addForm" class="card stack" autocomplete="off">
+        <h2>Add vehicle</h2>
+        <div><label for="fPlate">Plate number</label><input id="fPlate" placeholder="UP20AB1234" maxlength="12"></div>
+        <div><label for="fModel">Model</label><input id="fModel" placeholder="Maruti Swift" maxlength="30"></div>
+        <div><label for="fType">Type</label><select id="fType"><option value="0">Car</option><option value="1">Truck</option><option value="2">Bus</option><option value="3">Bike</option></select></div>
+        <div><label for="fMileage">Mileage (km)</label><input id="fMileage" type="number" min="0" value="0"></div>
+        <div><label for="fLoc">Current location</label><select id="fLoc"></select></div>
+        <button class="btn primary" type="submit">Add vehicle</button>
+        <p id="addMsg" class="note" aria-live="polite"></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- NETWORK -->
+  <section id="p-network" class="panel" role="tabpanel" hidden>
+    <div class="two">
+      <div class="card stack">
+        <h2>Locations</h2>
+        <div class="chips" id="locChips"></div>
+        <form id="locForm" autocomplete="off">
+          <label for="nName">New location</label>
+          <div class="row"><input id="nName" placeholder="City or depot name" maxlength="24"><button class="btn" type="submit">Add</button></div>
+        </form>
+        <p id="locMsg" class="note" aria-live="polite"></p>
+      </div>
+      <div class="card stack">
+        <h2>Add road</h2>
+        <form id="roadForm" class="stack" autocomplete="off">
+          <div class="row">
+            <div style="flex:1 1 130px"><label for="nFrom">From</label><select id="nFrom"></select></div>
+            <div style="flex:1 1 130px"><label for="nTo">To</label><select id="nTo"></select></div>
+            <div style="flex:1 1 90px"><label for="nKm">Distance (km)</label><input id="nKm" type="number" min="1" value="50"></div>
+          </div>
+          <label class="check" for="nTwo"><input id="nTwo" type="checkbox" checked> Two-way road</label>
+          <button class="btn primary" type="submit">Save road</button>
+          <p id="roadMsg" class="note" aria-live="polite"></p>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Roads</h2>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>From</th><th>To</th><th class="num">Distance (km)</th><th></th></tr></thead>
+          <tbody id="roadBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Which places connect</h2>
+      <div id="reachBanner"></div>
+      <div class="tablewrap" id="reachWrap"></div>
+      <p class="caption">Warshall's algorithm. A filled cell means a vehicle can get from the row location to the column location by some chain of roads. One-way roads count in their own direction only.</p>
+    </div>
+
+    <div class="card">
+      <h2>Shortest distances (km)</h2>
+      <div class="tablewrap" id="distWrap"></div>
+      <p class="caption">Floyd-Warshall algorithm. Each cell is the shortest total distance from the row location to the column location.</p>
+    </div>
+  </section>
+
+  <!-- ROUTES -->
+  <section id="p-routes" class="panel" role="tabpanel" hidden>
+    <div class="card stack">
+      <h2>Shortest route</h2>
+      <div class="row">
+        <div style="flex:1 1 160px"><label for="rFrom">From</label><select id="rFrom"></select></div>
+        <div style="flex:1 1 160px"><label for="rTo">To</label><select id="rTo"></select></div>
+      </div>
+      <div id="routeOut" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- DISPATCH -->
+  <section id="p-dispatch" class="panel" role="tabpanel" hidden>
+    <div class="card stack">
+      <h2>Dispatch nearest vehicle</h2>
+      <div class="row">
+        <div style="flex:1 1 160px"><label for="dDest">Pickup location</label><select id="dDest"></select></div>
+        <div style="flex:1 1 160px"><label for="dType">Vehicle type</label>
+          <select id="dType"><option value="any">Any</option><option value="0">Car</option><option value="1">Truck</option><option value="2">Bus</option><option value="3">Bike</option></select></div>
+      </div>
+      <p id="dMsg" class="note" aria-live="polite"></p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th class="num">#</th><th>Vehicle</th><th>Now at</th><th class="num">Distance (km)</th><th>Route</th><th></th></tr></thead>
+          <tbody id="dispBody"></tbody>
+        </table>
+      </div>
+      <p class="caption">Only available vehicles are listed. Distances come from Floyd-Warshall and the candidates are presorted by distance with merge sort.</p>
+    </div>
+  </section>
+
+  <footer>
+    <span id="saveNote">Changes are saved in this browser.</span>
+    <button class="btn small ghost" id="resetBtn" type="button">Reset to sample data</button>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var TYPES = ['Car', 'Truck', 'Bus', 'Bike'];
+  var STATUS = ['Available', 'On trip', 'Maintenance'];
+  var INF = 1e9;
+  var KEY = 'fleetdesk.v1';
+  var MAX_LOC = 20;
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function fmt(n) { return Number(n).toLocaleString('en-IN'); }
+
+  /* ---------- data ---------- */
+  function sample() {
+    return {
+      dueAt: 80000, nextId: 7,
+      locations: ['Delhi', 'Meerut', 'Bijnor', 'Haridwar', 'Dehradun', 'Moradabad'],
+      roads: [[0,1,70],[1,0,70],[1,2,90],[2,1,90],[2,3,60],[3,2,60],[3,4,55],[4,3,55],[1,5,100],[5,1,100],[5,2,65],[2,5,65]]
+        .map(function (r) { return { u: r[0], v: r[1], d: r[2] }; }),
+      vehicles: [
+        { id: 1, plate: 'UP20AB1234', model: 'Maruti Swift Dzire', type: 0, mileage: 45210, status: 0, loc: 0 },
+        { id: 2, plate: 'UP20CD5678', model: 'Tata Ace', type: 1, mileage: 82115, status: 0, loc: 2 },
+        { id: 3, plate: 'UK07EF9012', model: 'Ashok Leyland Viking', type: 2, mileage: 126400, status: 0, loc: 4 },
+        { id: 4, plate: 'DL01GH3456', model: 'Royal Enfield Classic', type: 3, mileage: 18950, status: 1, loc: 1 },
+        { id: 5, plate: 'UP21JK7788', model: 'Mahindra Bolero', type: 0, mileage: 61200, status: 2, loc: 5 },
+        { id: 6, plate: 'UK08LM4321', model: 'Eicher Pro 2049', type: 1, mileage: 97300, status: 0, loc: 3 }
+      ]
+    };
+  }
+  var S = load();
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) { var o = JSON.parse(raw); if (o && o.vehicles && o.locations && o.roads) return o; }
+    } catch (e) {}
+    return sample();
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+  /* ---------- algorithms ---------- */
+  function mergeSort(arr, cmp) {            // presorting
+    if (arr.length < 2) return arr.slice();
+    var m = arr.length >> 1, l = mergeSort(arr.slice(0, m), cmp), r = mergeSort(arr.slice(m), cmp), out = [], i = 0, j = 0;
+    while (i < l.length && j < r.length) out.push(cmp(l[i], r[j]) <= 0 ? l[i++] : r[j++]);
+    while (i < l.length) out.push(l[i++]);
+    while (j < r.length) out.push(r[j++]);
+    return out;
+  }
+  function binarySearch(sorted, key, cmpToKey) {   // cmpToKey(item) < 0 means item is before key
+    var lo = 0, hi = sorted.length - 1, steps = 0;
+    while (lo <= hi) {
+      steps++;
+      var mid = (lo + hi) >> 1, c = cmpToKey(sorted[mid]);
+      if (c === 0) return { item: sorted[mid], steps: steps };
+      if (c < 0) lo = mid + 1; else hi = mid - 1;
+    }
+    return { item: null, steps: steps };
+  }
+  function buildAdj() {
+    var n = S.locations.length, a = [], i, j;
+    for (i = 0; i < n; i++) { a.push([]); for (j = 0; j < n; j++) a[i].push(i === j ? 0 : INF); }
+    S.roads.forEach(function (r) { if (r.u < n && r.v < n && r.d < a[r.u][r.v]) a[r.u][r.v] = r.d; });
+    return a;
+  }
+  function warshall() {
+    var a = buildAdj(), n = a.length, R = [], i, j, k;
+    for (i = 0; i < n; i++) { R.push([]); for (j = 0; j < n; j++) R[i].push(i === j || a[i][j] < INF); }
+    for (k = 0; k < n; k++) for (i = 0; i < n; i++) if (R[i][k]) for (j = 0; j < n; j++) R[i][j] = R[i][j] || R[k][j];
+    return R;
+  }
+  function floyd() {
+    var a = buildAdj(), n = a.length, D = [], N = [], i, j, k;
+    for (i = 0; i < n; i++) { D.push([]); N.push([]); for (j = 0; j < n; j++) { D[i].push(a[i][j]); N[i].push(a[i][j] < INF ? j : -1); } }
+    for (k = 0; k < n; k++) for (i = 0; i < n; i++) for (j = 0; j < n; j++)
+      if (D[i][k] < INF && D[k][j] < INF && D[i][k] + D[k][j] < D[i][j]) { D[i][j] = D[i][k] + D[k][j]; N[i][j] = N[i][k]; }
+    return { dist: D, next: N };
+  }
+  function pathOf(next, u, v) {
+    if (next[u][v] < 0) return null;
+    var p = [u];
+    while (u !== v) { u = next[u][v]; p.push(u); }
+    return p;
+  }
+
+  /* ---------- helpers ---------- */
+  function normPlate(s) { return s.toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+  function cmpPlate(a, b) { return a.plate < b.plate ? -1 : a.plate > b.plate ? 1 : 0; }
+  function plateExists(p) {
+    var sorted = mergeSort(S.vehicles, cmpPlate);
+    return binarySearch(sorted, p, function (v) { return v.plate < p ? -1 : v.plate > p ? 1 : 0; }).item !== null;
+  }
+  function plateHtml(v) { return '<span class="plate' + (v.type === 1 || v.type === 2 ? ' y' : '') + '">' + esc(v.plate) + '</span>'; }
+  function opts(list, sel) { return list.map(function (t, i) { return '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join(''); }
+  function abbrs() {
+    var used = {};
+    return S.locations.map(function (n) {
+      var c = n.replace(/[^A-Za-z0-9]/g, ''), k = 3, a = c.slice(0, k);
+      while (used[a] && k < c.length) { k++; a = c.slice(0, k); }
+      used[a] = true; return a;
+    });
+  }
+  function say(id, text, kind) { var el = $(id); el.textContent = text; el.className = 'note' + (kind ? ' ' + kind : ''); }
+
+  /* ---------- state ---------- */
+  var tab = 'fleet', hlId = null, pendingDel = null, dispatchNote = '', dispatchKind = '';
+
+  /* ---------- fleet ---------- */
+  function sortedVehicles() {
+    var m = $('sortMode').value;
+    if (m === 'plate') return mergeSort(S.vehicles, cmpPlate);
+    if (m === 'mileage') return mergeSort(S.vehicles, function (a, b) { return b.mileage - a.mileage; });
+    if (m === 'id') return mergeSort(S.vehicles, function (a, b) { return a.id - b.id; });
+    return S.vehicles.slice();
+  }
+  function renderFleet() {
+    var due = S.dueAt, cnt = [0, 0, 0];
+    S.vehicles.forEach(function (v) { cnt[v.status]++; });
+    var dueN = S.vehicles.filter(function (v) { return v.mileage >= due; }).length;
+    function stat(n, l) { return '<div class="stat"><b>' + n + '</b><span>' + l + '</span></div>'; }
+    $('stats').innerHTML = stat(S.vehicles.length, 'vehicles') + stat(cnt[0], 'available') + stat(cnt[1], 'on trip') + stat(cnt[2], 'in maintenance') + stat(dueN, 'due for service');
+
+    var list = sortedVehicles();
+    if (!list.length) { $('fleetBody').innerHTML = '<tr><td class="empty" colspan="8">No vehicles yet. Add the first one with the form.</td></tr>'; return; }
+    $('fleetBody').innerHTML = list.map(function (v) {
+      var p = pendingDel === v.id;
+      return '<tr class="' + (v.id === hlId ? 'hl' : '') + '">' +
+        '<td class="num">' + v.id + '</td>' +
+        '<td>' + plateHtml(v) + '</td>' +
+        '<td>' + esc(v.model) + (v.mileage >= due ? ' <span class="pill st2">Service due</span>' : '') + '</td>' +
+        '<td>' + TYPES[v.type] + '</td>' +
+        '<td class="num">' + fmt(v.mileage) + '</td>' +
+        '<td><select data-act="status" data-id="' + v.id + '" aria-label="Status of vehicle ' + v.id + '">' + opts(STATUS, v.status) + '</select></td>' +
+        '<td><select data-act="loc" data-id="' + v.id + '" aria-label="Location of vehicle ' + v.id + '">' + opts(S.locations, v.loc) + '</select></td>' +
+        '<td class="right"><button class="btn small ' + (p ? 'danger' : 'ghost') + '" data-act="del" data-id="' + v.id + '">' + (p ? 'Confirm delete' : 'Delete') + '</button></td></tr>';
+    }).join('');
+  }
+  function vehById(id) { for (var i = 0; i < S.vehicles.length; i++) if (S.vehicles[i].id === id) return S.vehicles[i]; return null; }
+
+  $('fleetBody').addEventListener('change', function (e) {
+    var t = e.target, act = t.getAttribute('data-act'); if (!act) return;
+    var v = vehById(+t.getAttribute('data-id')); if (!v) return;
+    if (act === 'status') v.status = +t.value;
+    if (act === 'loc') v.loc = +t.value;
+    save(); renderAll();
+  });
+  $('fleetBody').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-act="del"]'); if (!b) return;
+    var id = +b.getAttribute('data-id');
+    if (pendingDel !== id) { pendingDel = id; renderFleet(); return; }
+    S.vehicles = S.vehicles.filter(function (v) { return v.id !== id; });
+    pendingDel = null; hlId = null; save(); say('findMsg', 'Vehicle ' + id + ' deleted.', ''); renderAll();
+  });
+  $('sortMode').addEventListener('change', renderFleet);
+  $('dueAt').addEventListener('input', function () { var n = parseInt(this.value, 10); S.dueAt = isNaN(n) ? 0 : n; save(); renderFleet(); });
+  $('findForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var id = parseInt($('findId').value, 10);
+    if (isNaN(id)) { say('findMsg', 'Enter a vehicle ID to look for.', 'err'); return; }
+    var sorted = mergeSort(S.vehicles, function (a, b) { return a.id - b.id; });
+    var r = binarySearch(sorted, id, function (v) { return v.id - id; });
+    if (r.item) { hlId = id; say('findMsg', 'Vehicle ' + id + ' found in ' + r.steps + (r.steps === 1 ? ' step' : ' steps') + ' of binary search over ' + sorted.length + ' sorted records.', 'ok'); }
+    else { hlId = null; say('findMsg', 'No vehicle has ID ' + id + '. Binary search checked ' + r.steps + (r.steps === 1 ? ' position.' : ' positions.'), 'err'); }
+    renderFleet();
+  });
+  $('addForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var plate = normPlate($('fPlate').value), model = $('fModel').value.trim(), mileage = parseInt($('fMileage').value, 10);
+    if (!plate) { say('addMsg', 'Enter a plate number.', 'err'); return; }
+    if (!model) { say('addMsg', 'Enter the vehicle model.', 'err'); return; }
+    if (isNaN(mileage) || mileage < 0) { say('addMsg', 'Mileage must be zero or more.', 'err'); return; }
+    if (!S.locations.length) { say('addMsg', 'Add a location first.', 'err'); return; }
+    if (plateExists(plate)) { say('addMsg', 'A vehicle with plate ' + plate + ' already exists.', 'err'); return; }
+    var id = S.nextId++;
+    S.vehicles.push({ id: id, plate: plate, model: model, type: +$('fType').value, mileage: mileage, status: 0, loc: +$('fLoc').value });
+    save(); $('fPlate').value = ''; $('fModel').value = ''; $('fMileage').value = '0';
+    say('addMsg', 'Added as vehicle ' + id + '.', 'ok'); renderAll();
+  });
+
+  /* ---------- network ---------- */
+  function renderNetwork() {
+    var perLoc = S.locations.map(function () { return 0; });
+    S.vehicles.forEach(function (v) { if (perLoc[v.loc] !== undefined) perLoc[v.loc]++; });
+    $('locChips').innerHTML = S.locations.map(function (n, i) { return '<span class="chip">' + esc(n) + '<small>' + perLoc[i] + ' veh.</small></span>'; }).join('');
+
+    $('roadBody').innerHTML = S.roads.length ? S.roads.map(function (r, i) {
+      return '<tr><td>' + esc(S.locations[r.u]) + '</td><td>' + esc(S.locations[r.v]) + '</td><td class="num">' + fmt(r.d) + '</td>' +
+        '<td class="right"><button class="btn small ghost" data-road="' + i + '">Remove</button></td></tr>';
+    }).join('') : '<tr><td class="empty" colspan="4">No roads yet. Add one to connect two locations.</td></tr>';
+
+    var R = warshall(), ab = abbrs(), n = S.locations.length, i, j, unreach = [];
+    var head = '<tr><th></th>' + ab.map(function (a, k) { return '<th title="' + esc(S.locations[k]) + '">' + esc(a) + '</th>'; }).join('') + '</tr>';
+    var rows = '';
+    for (i = 0; i < n; i++) {
+      rows += '<tr><th class="rh" scope="row">' + esc(S.locations[i]) + '</th>';
+      for (j = 0; j < n; j++) {
+        if (R[i][j]) rows += '<td class="' + (i === j ? 'on' : 'on') + '">1</td>';
+        else { rows += '<td class="off">0</td>'; unreach.push([i, j]); }
+      }
+      rows += '</tr>';
+    }
+    $('reachWrap').innerHTML = '<table class="matrix"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table>';
+    if (!unreach.length) $('reachBanner').innerHTML = '<div class="banner ok">Every location can reach every other location.</div>';
+    else {
+      var ex = unreach.slice(0, 3).map(function (p) { return S.locations[p[0]] + ' to ' + S.locations[p[1]]; }).join(', ');
+      $('reachBanner').innerHTML = '<div class="banner bad">' + unreach.length + ' trip' + (unreach.length === 1 ? ' has' : 's have') + ' no route, for example ' + esc(ex) + '.</div>';
+    }
+
+    var F = floyd(), drows = '';
+    for (i = 0; i < n; i++) {
+      drows += '<tr><th class="rh" scope="row">' + esc(S.locations[i]) + '</th>';
+      for (j = 0; j < n; j++) {
+        var d = F.dist[i][j];
+        drows += d >= INF ? '<td class="off">-</td>' : '<td class="' + (i === j ? 'diag' : '') + '">' + fmt(d) + '</td>';
+      }
+      drows += '</tr>';
+    }
+    $('distWrap').innerHTML = '<table class="matrix"><thead>' + head + '</thead><tbody>' + drows + '</tbody></table>';
+  }
+  $('roadBody').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-road]'); if (!b) return;
+    S.roads.splice(+b.getAttribute('data-road'), 1); save(); renderAll();
+  });
+  $('locForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = $('nName').value.trim();
+    if (!name) { say('locMsg', 'Enter a location name.', 'err'); return; }
+    if (S.locations.length >= MAX_LOC) { say('locMsg', 'The network holds up to ' + MAX_LOC + ' locations.', 'err'); return; }
+    if (S.locations.some(function (l) { return l.toLowerCase() === name.toLowerCase(); })) { say('locMsg', name + ' is already in the list.', 'err'); return; }
+    S.locations.push(name); save(); $('nName').value = ''; say('locMsg', name + ' added. Connect it with a road.', 'ok'); renderAll();
+  });
+  $('roadForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var u = +$('nFrom').value, v = +$('nTo').value, d = parseInt($('nKm').value, 10), two = $('nTwo').checked;
+    if (u === v) { say('roadMsg', 'Choose two different locations.', 'err'); return; }
+    if (isNaN(d) || d < 1) { say('roadMsg', 'Distance must be at least 1 km.', 'err'); return; }
+    function put(a, b) {
+      for (var i = 0; i < S.roads.length; i++) if (S.roads[i].u === a && S.roads[i].v === b) { S.roads[i].d = d; return; }
+      S.roads.push({ u: a, v: b, d: d });
+    }
+    put(u, v); if (two) put(v, u);
+    save(); say('roadMsg', 'Road ' + S.locations[u] + (two ? ' <-> ' : ' -> ') + S.locations[v] + ' saved at ' + d + ' km.', 'ok'); renderAll();
+  });
+
+  /* ---------- routes ---------- */
+  function renderRoute() {
+    var u = +$('rFrom').value, v = +$('rTo').value, out = $('routeOut');
+    if (isNaN(u) || isNaN(v)) { out.innerHTML = ''; return; }
+    var F = floyd(), p = pathOf(F.next, u, v);
+    if (!p) { out.innerHTML = '<div class="banner bad">No route from ' + esc(S.locations[u]) + ' to ' + esc(S.locations[v]) + '. Add a road to connect them.</div>'; return; }
+    var a = buildAdj(), html = '<div class="route-total">' + fmt(F.dist[u][v]) + '<small>km</small></div><div class="legs">';
+    p.forEach(function (n, i) {
+      html += '<span class="chip">' + esc(S.locations[n]) + '</span>';
+      if (i < p.length - 1) html += '<span class="arrow">&rarr;</span><span class="km">' + a[n][p[i + 1]] + ' km</span><span class="arrow">&rarr;</span>';
+    });
+    out.innerHTML = html + '</div>' + (p.length === 1 ? '<p class="caption">Start and end are the same place.</p>' : '<p class="caption">' + (p.length - 1) + ' road' + (p.length === 2 ? '' : 's') + ' on the way.</p>');
+  }
+
+  /* ---------- dispatch ---------- */
+  function renderDispatch() {
+    var body = $('dispBody'), dest = +$('dDest').value, type = $('dType').value;
+    say('dMsg', dispatchNote, dispatchKind);
+    if (isNaN(dest)) { body.innerHTML = ''; return; }
+    var F = floyd();
+    var pool = S.vehicles.filter(function (v) { return v.status === 0 && (type === 'any' || v.type === +type); });
+    var reach = [], none = [];
+    pool.forEach(function (v) { var d = F.dist[v.loc][dest]; (d < INF ? reach : none).push({ v: v, d: d }); });
+    var ranked = mergeSort(reach, function (a, b) { return a.d - b.d || a.v.id - b.v.id; });
+    if (!pool.length) { body.innerHTML = '<tr><td class="empty" colspan="6">No available vehicle of this type.</td></tr>'; return; }
+    var html = ranked.map(function (r, i) {
+      var route = pathOf(F.next, r.v.loc, dest).map(function (n) { return S.locations[n]; }).join(' → ');
+      return '<tr class="' + (i === 0 ? 'nearest' : '') + '"><td class="num">' + (i + 1) + '</td><td>' + plateHtml(r.v) + ' ' + esc(r.v.model) + (i === 0 ? ' <span class="pill st0">Nearest</span>' : '') + '</td>' +
+        '<td>' + esc(S.locations[r.v.loc]) + '</td><td class="num">' + fmt(r.d) + '</td><td>' + esc(route) + '</td>' +
+        '<td class="right"><button class="btn small ' + (i === 0 ? 'primary' : '') + '" data-assign="' + r.v.id + '">Assign</button></td></tr>';
+    }).join('');
+    html += none.map(function (r) {
+      return '<tr><td class="num">-</td><td>' + plateHtml(r.v) + ' ' + esc(r.v.model) + '</td><td>' + esc(S.locations[r.v.loc]) + '</td><td class="num">-</td><td><span class="pill st2">No route</span></td><td></td></tr>';
+    }).join('');
+    body.innerHTML = html;
+  }
+  $('dispBody').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-assign]'); if (!b) return;
+    var v = vehById(+b.getAttribute('data-assign')), dest = +$('dDest').value; if (!v) return;
+    var F = floyd(), d = F.dist[v.loc][dest]; if (d >= INF) return;
+    v.mileage += d; v.loc = dest; v.status = 1;
+    dispatchNote = v.plate + ' assigned. It is now on a trip at ' + S.locations[dest] + ' and ' + fmt(d) + ' km was added to its mileage.'; dispatchKind = 'ok';
+    save(); renderAll();
+  });
+  $('dDest').addEventListener('change', function () { dispatchNote = ''; renderDispatch(); });
+  $('dType').addEventListener('change', function () { dispatchNote = ''; renderDispatch(); });
+  $('rFrom').addEventListener('change', renderRoute);
+  $('rTo').addEventListener('change', renderRoute);
+
+  /* ---------- selects, tabs, reset ---------- */
+  function fillSelects() {
+    ['fLoc', 'nFrom', 'nTo', 'rFrom', 'rTo', 'dDest'].forEach(function (id) {
+      var el = $(id), prev = el.value;
+      el.innerHTML = S.locations.map(function (n, i) { return '<option value="' + i + '">' + esc(n) + '</option>'; }).join('');
+      if (prev !== '' && +prev < S.locations.length) el.value = prev;
+    });
+    if (S.locations.length > 1) {
+      if (!fillSelects.done) { $('nTo').value = '1'; $('rTo').value = String(Math.min(4, S.locations.length - 1)); fillSelects.done = true; }
+    }
+  }
+  function renderAll() { fillSelects(); renderFleet(); renderNetwork(); renderRoute(); renderDispatch(); }
+
+  function setTab(t) {
+    tab = t;
+    document.querySelectorAll('[data-tab]').forEach(function (b) { var on = b.getAttribute('data-tab') === t; b.setAttribute('aria-selected', on ? 'true' : 'false'); b.tabIndex = on ? 0 : -1; });
+    document.querySelectorAll('.panel').forEach(function (p) { p.hidden = p.id !== 'p-' + t; });
+  }
+  $('tabs').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) setTab(b.getAttribute('data-tab')); });
+  $('tabs').addEventListener('keydown', function (e) {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    var names = ['fleet', 'network', 'routes', 'dispatch'], i = names.indexOf(tab);
+    i = (i + (e.key === 'ArrowRight' ? 1 : names.length - 1)) % names.length;
+    setTab(names[i]); document.querySelector('[data-tab="' + names[i] + '"]').focus();
+  });
+
+  var resetArmed = false;
+  $('resetBtn').addEventListener('click', function () {
+    if (!resetArmed) { resetArmed = true; this.textContent = 'Click again to confirm reset'; return; }
+    resetArmed = false; this.textContent = 'Reset to sample data';
+    S = sample(); save(); hlId = null; pendingDel = null; dispatchNote = ''; fillSelects.done = false;
+    $('dueAt').value = S.dueAt; say('findMsg', 'Sample data restored.', ''); renderAll();
+  });
+
+  $('dueAt').value = S.dueAt || 80000; if (!S.dueAt) S.dueAt = 80000;
+  renderAll();
+})();
+</script>
+
+</body></html>

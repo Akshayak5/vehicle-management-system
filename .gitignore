@@ -1,0 +1,12 @@
+# Compiled program
+vehicle_mgmt
+vehicle_mgmt.exe
+*.o
+
+# Data files created by the C program at run time
+vehicles.dat
+locations.txt
+roads.txt
+
+# macOS
+.DS_Store
