@@ -2,12 +2,14 @@
 
 A fleet management system that keeps vehicle records, models a road network between locations, and dispatches the nearest available vehicle to a pickup point. It is built around three classic algorithms: **presorting**, **Warshall's reachability** and **Floyd-Warshall shortest paths**.
 
+**Live demo:** https://akshayak5.github.io/vehicle-management-system/
+
 The project comes in two forms that share the same logic:
 
 | Version | File | Description |
 |---|---|---|
 | Command line | `vehicle_mgmt.c` | Menu-driven C program with persistent file storage |
-| Web app | `index.html` | Single-page browser app, no installation or server required |
+| Web app | `index.html` | Single-page browser app, no installation or server required. [Try it online](https://akshayak5.github.io/vehicle-management-system/) |
 
 ## Table of contents
 
@@ -71,7 +73,7 @@ Locations are nodes and roads are weighted directed edges (distance in km). A tw
 ### Clone the repository
 
 ```bash
-git clone https://github.com/<your-username>/vehicle-management-system.git
+git clone https://github.com/Akshayak5/vehicle-management-system.git
 cd vehicle-management-system
 ```
 
@@ -86,7 +88,9 @@ On Windows, run `vehicle_mgmt.exe` instead of `./vehicle_mgmt`.
 
 ### Run the web app
 
-Open `index.html` in a browser:
+**Online:** open the live demo at https://akshayak5.github.io/vehicle-management-system/. Nothing to install.
+
+**Locally:** open `index.html` in a browser:
 
 ```bash
 open index.html        # macOS
