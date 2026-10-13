@@ -43,6 +43,7 @@
   }
 
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body {
     background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45;
     padding-inline: 16px; padding-block: 20px 48px;
@@ -67,7 +68,7 @@
   .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-width: 0; }
   .card > h2 { margin-bottom: 12px; }
   .split { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
-  @media (min-width: 960px) { .split { grid-template-columns: minmax(0, 1fr) 300px; } }
+  @media (min-width: 1180px) { .split { grid-template-columns: minmax(0, 1fr) 300px; } }
   .two { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
   @media (min-width: 860px) { .two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
   .stack { display: grid; gap: 12px; }
