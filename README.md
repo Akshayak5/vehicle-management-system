@@ -209,5 +209,4 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 
 ## Author
 
-**Your Name**
-Your course and institution
+AKSHAYA K
