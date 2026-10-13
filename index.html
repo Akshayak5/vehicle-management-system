@@ -1,4 +1,3 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Fleet Desk</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -279,17 +278,19 @@
       <h2>Dispatch nearest vehicle</h2>
       <div class="row">
         <div style="flex:1 1 160px"><label for="dDest">Pickup location</label><select id="dDest"></select></div>
+        <div style="flex:1 1 160px"><label for="dDrop">Drop-off destination</label><select id="dDrop"></select></div>
         <div style="flex:1 1 160px"><label for="dType">Vehicle type</label>
           <select id="dType"><option value="any">Any</option><option value="0">Car</option><option value="1">Truck</option><option value="2">Bus</option><option value="3">Bike</option></select></div>
       </div>
+      <div id="dTrip" aria-live="polite"></div>
       <p id="dMsg" class="note" aria-live="polite"></p>
       <div class="tablewrap">
         <table>
-          <thead><tr><th class="num">#</th><th>Vehicle</th><th>Now at</th><th class="num">Distance (km)</th><th>Route</th><th></th></tr></thead>
+          <thead><tr><th class="num">#</th><th>Vehicle</th><th>Now at</th><th class="num">To pickup (km)</th><th class="num">Total trip (km)</th><th>Full route</th><th></th></tr></thead>
           <tbody id="dispBody"></tbody>
         </table>
       </div>
-      <p class="caption">Only available vehicles are listed. Distances come from Floyd-Warshall and the candidates are presorted by distance with merge sort.</p>
+      <p class="caption">Only available vehicles are listed. The total trip is vehicle to pickup plus pickup to drop-off. Distances come from Floyd-Warshall and candidates are presorted by distance with merge sort. Assigning moves the vehicle to the drop-off and adds the whole trip to its mileage.</p>
     </div>
   </section>
 
@@ -557,37 +558,72 @@
   }
 
   /* ---------- dispatch ---------- */
+  function legsHtml(p, a) {
+    var html = '<div class="legs">';
+    p.forEach(function (n, i) {
+      html += '<span class="chip">' + esc(S.locations[n]) + '</span>';
+      if (i < p.length - 1) html += '<span class="arrow">&rarr;</span><span class="km">' + a[n][p[i + 1]] + ' km</span><span class="arrow">&rarr;</span>';
+    });
+    return html + '</div>';
+  }
+  function dispatchInputs() {
+    var pick = +$('dDest').value, drop = +$('dDrop').value;
+    return { pick: pick, drop: drop, hasDrop: drop >= 0 && drop !== pick, type: $('dType').value };
+  }
   function renderDispatch() {
-    var body = $('dispBody'), dest = +$('dDest').value, type = $('dType').value;
+    var body = $('dispBody'), trip = $('dTrip'), q = dispatchInputs();
     say('dMsg', dispatchNote, dispatchKind);
-    if (isNaN(dest)) { body.innerHTML = ''; return; }
-    var F = floyd();
-    var pool = S.vehicles.filter(function (v) { return v.status === 0 && (type === 'any' || v.type === +type); });
+    trip.innerHTML = '';
+    if (isNaN(q.pick)) { body.innerHTML = ''; return; }
+    var F = floyd(), a = buildAdj(), leg = 0, tp = null;
+    if (q.hasDrop) {
+      tp = pathOf(F.next, q.pick, q.drop);
+      if (!tp) {
+        trip.innerHTML = '<div class="banner bad">No route from ' + esc(S.locations[q.pick]) + ' to ' + esc(S.locations[q.drop]) + '. Add a road to connect them.</div>';
+        body.innerHTML = '<tr><td class="empty" colspan="7">Choose a drop-off that the pickup location can reach.</td></tr>';
+        return;
+      }
+      leg = F.dist[q.pick][q.drop];
+      trip.innerHTML = '<div class="lbl">Pickup to drop-off: ' + fmt(leg) + ' km</div>' + legsHtml(tp, a);
+    }
+    var pool = S.vehicles.filter(function (v) { return v.status === 0 && (q.type === 'any' || v.type === +q.type); });
     var reach = [], none = [];
-    pool.forEach(function (v) { var d = F.dist[v.loc][dest]; (d < INF ? reach : none).push({ v: v, d: d }); });
-    var ranked = mergeSort(reach, function (a, b) { return a.d - b.d || a.v.id - b.v.id; });
-    if (!pool.length) { body.innerHTML = '<tr><td class="empty" colspan="6">No available vehicle of this type.</td></tr>'; return; }
+    pool.forEach(function (v) { var d = F.dist[v.loc][q.pick]; (d < INF ? reach : none).push({ v: v, d: d }); });
+    var ranked = mergeSort(reach, function (x, y) { return x.d - y.d || x.v.id - y.v.id; });
+    if (!pool.length) { body.innerHTML = '<tr><td class="empty" colspan="7">No available vehicle of this type.</td></tr>'; return; }
     var html = ranked.map(function (r, i) {
-      var route = pathOf(F.next, r.v.loc, dest).map(function (n) { return S.locations[n]; }).join(' → ');
+      var p1 = pathOf(F.next, r.v.loc, q.pick), p2 = q.hasDrop ? tp : [q.pick];
+      var full = p1.concat(p2.slice(1));
+      var route = full.map(function (n, k) {
+        var t = S.locations[n];
+        if (k === p1.length - 1) t += ' (pickup)';
+        if (q.hasDrop && k === full.length - 1) t += ' (drop-off)';
+        return t;
+      }).join(' → ');
       return '<tr class="' + (i === 0 ? 'nearest' : '') + '"><td class="num">' + (i + 1) + '</td><td>' + plateHtml(r.v) + ' ' + esc(r.v.model) + (i === 0 ? ' <span class="pill st0">Nearest</span>' : '') + '</td>' +
-        '<td>' + esc(S.locations[r.v.loc]) + '</td><td class="num">' + fmt(r.d) + '</td><td>' + esc(route) + '</td>' +
+        '<td>' + esc(S.locations[r.v.loc]) + '</td><td class="num">' + fmt(r.d) + '</td><td class="num">' + fmt(r.d + leg) + '</td><td>' + esc(route) + '</td>' +
         '<td class="right"><button class="btn small ' + (i === 0 ? 'primary' : '') + '" data-assign="' + r.v.id + '">Assign</button></td></tr>';
     }).join('');
     html += none.map(function (r) {
-      return '<tr><td class="num">-</td><td>' + plateHtml(r.v) + ' ' + esc(r.v.model) + '</td><td>' + esc(S.locations[r.v.loc]) + '</td><td class="num">-</td><td><span class="pill st2">No route</span></td><td></td></tr>';
+      return '<tr><td class="num">-</td><td>' + plateHtml(r.v) + ' ' + esc(r.v.model) + '</td><td>' + esc(S.locations[r.v.loc]) + '</td><td class="num">-</td><td class="num">-</td><td><span class="pill st2">No route to pickup</span></td><td></td></tr>';
     }).join('');
     body.innerHTML = html;
   }
   $('dispBody').addEventListener('click', function (e) {
     var b = e.target.closest('[data-assign]'); if (!b) return;
-    var v = vehById(+b.getAttribute('data-assign')), dest = +$('dDest').value; if (!v) return;
-    var F = floyd(), d = F.dist[v.loc][dest]; if (d >= INF) return;
-    v.mileage += d; v.loc = dest; v.status = 1;
-    dispatchNote = v.plate + ' assigned. It is now on a trip at ' + S.locations[dest] + ' and ' + fmt(d) + ' km was added to its mileage.'; dispatchKind = 'ok';
+    var v = vehById(+b.getAttribute('data-assign')), q = dispatchInputs(); if (!v) return;
+    var F = floyd(), d1 = F.dist[v.loc][q.pick], d2 = q.hasDrop ? F.dist[q.pick][q.drop] : 0;
+    if (d1 >= INF || d2 >= INF) return;
+    var end = q.hasDrop ? q.drop : q.pick;
+    v.mileage += d1 + d2; v.loc = end; v.status = 1;
+    dispatchNote = v.plate + ' assigned: pickup at ' + S.locations[q.pick] + (q.hasDrop ? ', drop-off at ' + S.locations[q.drop] : '') +
+      '. It is now on a trip at ' + S.locations[end] + ' and ' + fmt(d1 + d2) + ' km was added to its mileage.';
+    dispatchKind = 'ok';
     save(); renderAll();
   });
-  $('dDest').addEventListener('change', function () { dispatchNote = ''; renderDispatch(); });
-  $('dType').addEventListener('change', function () { dispatchNote = ''; renderDispatch(); });
+  ['dDest', 'dDrop', 'dType'].forEach(function (id) {
+    $(id).addEventListener('change', function () { dispatchNote = ''; renderDispatch(); });
+  });
   $('rFrom').addEventListener('change', renderRoute);
   $('rTo').addEventListener('change', renderRoute);
 
@@ -598,8 +634,16 @@
       el.innerHTML = S.locations.map(function (n, i) { return '<option value="' + i + '">' + esc(n) + '</option>'; }).join('');
       if (prev !== '' && +prev < S.locations.length) el.value = prev;
     });
+    var dd = $('dDrop'), prevDrop = dd.value;
+    dd.innerHTML = '<option value="-1">No drop-off (pickup only)</option>' +
+      S.locations.map(function (n, i) { return '<option value="' + i + '">' + esc(n) + '</option>'; }).join('');
+    if (prevDrop !== '' && +prevDrop < S.locations.length) dd.value = prevDrop;
     if (S.locations.length > 1) {
-      if (!fillSelects.done) { $('nTo').value = '1'; $('rTo').value = String(Math.min(4, S.locations.length - 1)); fillSelects.done = true; }
+      if (!fillSelects.done) {
+        $('nTo').value = '1'; $('rTo').value = String(Math.min(4, S.locations.length - 1));
+        dd.value = String(Math.min(4, S.locations.length - 1));
+        fillSelects.done = true;
+      }
     }
   }
   function renderAll() { fillSelects(); renderFleet(); renderNetwork(); renderRoute(); renderDispatch(); }
@@ -629,5 +673,3 @@
   renderAll();
 })();
 </script>
-
-</body></html>
