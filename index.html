@@ -87,6 +87,7 @@
     padding: 7px 10px; min-height: 38px; max-width: 100%; width: 100%;
   }
   td select { width: auto; min-height: 34px; padding: 4px 8px; }
+  td input.seatsin { width: 72px; min-height: 34px; padding: 4px 8px; text-align: right; }
   .row { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
   .row input { flex: 1 1 100px; width: auto; min-width: 0; }
   .check { display: flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-size: 15px; font-weight: 500; color: var(--ink); }
@@ -107,6 +108,7 @@
   .note.ok { color: var(--accent); }
   .note.err { color: var(--bad); }
   .caption { margin: 10px 0 0; font-size: 13px; color: var(--ink-2); }
+  .muted { color: var(--ink-2); }
 
   .statrow { display: flex; flex-wrap: wrap; gap: 8px 28px; }
   .stat { display: flex; align-items: baseline; gap: 8px; }
@@ -156,6 +158,15 @@
   .legs .arrow { color: var(--lane); font-weight: 700; }
   .qmeta { display: flex; flex-wrap: wrap; gap: 6px 24px; margin-top: 12px; color: var(--ink-2); }
   .qmeta b { color: var(--ink); font-weight: 600; }
+
+  table.lines { margin-top: 14px; }
+  .lines td { padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .lines td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .lines tr.total td { border-bottom: 0; border-top: 2px solid var(--ink); font: 700 22px var(--f-display); padding-top: 10px; }
+  .invhead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .invmeta { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 14px; }
+  .invmeta div { min-width: 0; overflow-wrap: anywhere; }
+  .invfoot { margin-top: 14px; }
 
   .nearest { background: var(--accent-soft); }
   footer { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; color: var(--ink-2); font-size: 13px; }
@@ -254,11 +265,11 @@
           <p id="findMsg" class="note" aria-live="polite"></p>
           <div class="tablewrap">
             <table>
-              <thead><tr><th class="num">ID</th><th>Plate</th><th>Model</th><th>Type</th><th class="num">Mileage (km)</th><th>Status</th><th>Location</th><th></th></tr></thead>
+              <thead><tr><th class="num">ID</th><th>Plate</th><th>Model</th><th>Type</th><th class="num">Seats</th><th class="num">Mileage (km)</th><th>Status</th><th>Location</th><th></th></tr></thead>
               <tbody id="fleetBody"></tbody>
             </table>
           </div>
-          <p class="caption">Lists are presorted with merge sort. Find by ID runs a binary search on the sorted records.</p>
+          <p class="caption">Seats is the passenger capacity, not counting the driver. Lists are presorted with merge sort. Find by ID runs a binary search on the sorted records.</p>
         </div>
 
         <form id="addForm" class="card stack" autocomplete="off">
@@ -266,6 +277,7 @@
           <div><label for="fPlate">Plate number</label><input id="fPlate" placeholder="UP20AB1234" maxlength="12"></div>
           <div><label for="fModel">Model</label><input id="fModel" placeholder="Maruti Swift" maxlength="30"></div>
           <div><label for="fType">Type</label><select id="fType"><option value="0">Car</option><option value="1">Truck</option><option value="2">Bus</option><option value="3">Bike</option></select></div>
+          <div><label for="fSeats">Passenger capacity</label><input id="fSeats" type="number" min="1" max="60" value="4"></div>
           <div><label for="fMileage">Mileage (km)</label><input id="fMileage" type="number" min="0" value="0"></div>
           <div><label for="fLoc">Current location</label><select id="fLoc"></select></div>
           <button class="btn primary" type="submit">Add vehicle</button>
@@ -366,11 +378,30 @@
         <p id="abMsg" class="note" aria-live="polite"></p>
         <div class="tablewrap">
           <table>
-            <thead><tr><th class="num">ID</th><th>Customer</th><th>Trip</th><th>Type</th><th class="num">Km</th><th class="num">Fare</th><th>Status</th><th>Vehicle</th><th></th></tr></thead>
+            <thead><tr><th class="num">ID</th><th>Customer</th><th>Trip</th><th>Vehicle asked for</th><th class="num">Km</th><th class="num">Total</th><th>Status</th><th>Assigned</th><th></th></tr></thead>
             <tbody id="abBody"></tbody>
           </table>
         </div>
-        <p class="caption">Approve assigns the nearest available vehicle of the requested type, found with Floyd-Warshall. Requests are presorted with pending first, then newest.</p>
+        <p class="caption">Approve assigns the nearest available vehicle of the requested model that seats the passengers, found with Floyd-Warshall. Marking a trip completed creates its invoice. Requests are presorted with pending first, then newest.</p>
+      </div>
+    </section>
+
+    <!-- INVOICES (admin) -->
+    <section id="p-invoices" class="panel" role="tabpanel" hidden>
+      <div class="statrow" id="invStats"></div>
+      <div class="two">
+        <div class="card">
+          <h2>All invoices</h2>
+          <p id="aiMsg" class="note" aria-live="polite"></p>
+          <div class="tablewrap">
+            <table>
+              <thead><tr><th>Invoice</th><th>Customer</th><th>Trip</th><th class="num">Total</th><th>Status</th><th></th></tr></thead>
+              <tbody id="aiBody"></tbody>
+            </table>
+          </div>
+          <p class="caption">Unpaid invoices are listed first, then newest. Mark an invoice paid when cash is received; customers can also pay from their own Billing tab.</p>
+        </div>
+        <div class="card" id="aiDetail"></div>
       </div>
     </section>
 
@@ -396,7 +427,8 @@
           <h2>Book a ride</h2>
           <div><label for="bPick">Pickup location</label><select id="bPick"></select></div>
           <div><label for="bDrop">Drop-off destination</label><select id="bDrop"></select></div>
-          <div><label for="bType">Vehicle type</label><select id="bType"></select></div>
+          <div><label for="bPax">Number of passengers</label><input id="bPax" type="number" min="1" max="60" value="2"></div>
+          <div><label for="bModel">Vehicle model</label><select id="bModel"></select></div>
           <button class="btn primary" type="submit" id="bSubmit">Request booking</button>
           <p id="bMsg" class="note" aria-live="polite"></p>
         </form>
@@ -404,6 +436,16 @@
           <h2>Trip estimate</h2>
           <div id="bQuote" aria-live="polite"></div>
         </div>
+      </div>
+      <div class="card">
+        <h2>Vehicles and passenger capacity</h2>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Model</th><th>Type</th><th class="num">Passenger capacity</th><th class="num">Rate (₹/km)</th><th class="num">Available now</th><th></th></tr></thead>
+            <tbody id="capBody"></tbody>
+          </table>
+        </div>
+        <p class="caption">Capacity counts passengers only, not the driver. Models too small for your group are greyed out. Choose a row to select that model.</p>
       </div>
     </section>
 
@@ -414,17 +456,35 @@
         <p id="mMsg" class="note" aria-live="polite"></p>
         <div class="tablewrap">
           <table>
-            <thead><tr><th class="num">ID</th><th>Trip</th><th>Type</th><th class="num">Km</th><th class="num">Fare</th><th>Status</th><th>Vehicle</th><th>Requested</th><th></th></tr></thead>
+            <thead><tr><th class="num">ID</th><th>Trip</th><th>Vehicle asked for</th><th class="num">Km</th><th class="num">Total</th><th>Status</th><th>Assigned</th><th>Requested</th><th></th></tr></thead>
             <tbody id="mineBody"></tbody>
           </table>
         </div>
-        <p class="caption">A request stays pending until an admin approves it and assigns a vehicle.</p>
+        <p class="caption">A request stays pending until an admin approves it and assigns a vehicle. When the trip is completed, its bill appears under Billing.</p>
+      </div>
+    </section>
+
+    <!-- BILLING (customer) -->
+    <section id="p-bills" class="panel" role="tabpanel" hidden>
+      <div class="statrow" id="billStats"></div>
+      <div class="two">
+        <div class="card">
+          <h2>My invoices</h2>
+          <p id="bnMsg" class="note" aria-live="polite"></p>
+          <div class="tablewrap">
+            <table>
+              <thead><tr><th>Invoice</th><th>Trip</th><th class="num">Total</th><th>Status</th><th>Date</th><th></th></tr></thead>
+              <tbody id="billBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card" id="billDetail"></div>
       </div>
     </section>
 
     <footer>
       <span>Changes are saved in this browser.</span>
-      <button class="btn small ghost" id="resetBtn" type="button" hidden>Reset fleet and bookings to sample data</button>
+      <button class="btn small ghost" id="resetBtn" type="button" hidden>Reset fleet, bookings and invoices to sample data</button>
     </footer>
   </div>
 </div>
@@ -433,14 +493,17 @@
 (function () {
   var TYPES = ['Car', 'Truck', 'Bus', 'Bike'];
   var STATUS = ['Available', 'On trip', 'Maintenance'];
+  var DEFAULT_SEATS = [4, 2, 30, 1];   // passenger capacity by type, used as a starting value
   var RATES = [{ base: 60, perKm: 14 }, { base: 150, perKm: 28 }, { base: 200, perKm: 35 }, { base: 30, perKm: 7 }]; // rupees, illustrative
-  var AVG_SPEED = 45; // km/h used for time estimates
+  var TAX = 0.05;      // GST used on invoices, illustrative
+  var AVG_SPEED = 45;  // km/h used for time estimates
+  var PAY_METHODS = ['UPI', 'Card', 'Cash'];
   var INF = 1e9;
   var KEY = 'fleetdesk.v2', SESSION_KEY = 'fleetdesk.session';
   var MAX_LOC = 20;
   var ROLE_TABS = {
-    admin: [['fleet', 'Fleet'], ['network', 'Road network'], ['routes', 'Shortest route'], ['dispatch', 'Dispatch'], ['bookings', 'Bookings'], ['users', 'Users']],
-    customer: [['book', 'Book a ride'], ['mine', 'My bookings'], ['routes', 'Route planner']]
+    admin: [['fleet', 'Fleet'], ['network', 'Road network'], ['routes', 'Shortest route'], ['dispatch', 'Dispatch'], ['bookings', 'Bookings'], ['invoices', 'Billing'], ['users', 'Users']],
+    customer: [['book', 'Book a ride'], ['mine', 'My bookings'], ['bills', 'Billing'], ['routes', 'Route planner']]
   };
 
   function $(id) { return document.getElementById(id); }
@@ -449,21 +512,37 @@
   function money(n) { return '₹' + fmt(n); }
   function dur(m) { var h = Math.floor(m / 60), r = m % 60; return h ? h + ' h ' + r + ' min' : r + ' min'; }
   function dateStr(t) { return new Date(t).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }); }
+  function paxText(n) { return n + (n === 1 ? ' passenger' : ' passengers'); }
+
+  /* ---------- fares ---------- */
+  function fareFor(type, km) {
+    var r = RATES[type], dist = r.perKm * km, sub = r.base + dist, tax = Math.round(sub * TAX);
+    return { base: r.base, perKm: r.perKm, dist: dist, subtotal: sub, tax: tax, total: sub + tax };
+  }
+  function normBooking(b) {   // bring older saved bookings up to the current shape
+    if (b.total === undefined) {
+      var f = fareFor(b.type, b.km);
+      b.base = f.base; b.perKm = f.perKm; b.subtotal = f.subtotal; b.tax = f.tax; b.total = f.total; b.fare = f.total;
+    }
+    if (!b.passengers) b.passengers = 1;
+    if (!b.model) b.model = TYPES[b.type];
+    return b;
+  }
 
   /* ---------- data ---------- */
   function sample() {
     return {
-      dueAt: 80000, nextId: 7, nextUserId: 1, nextBookingId: 1, users: [], bookings: [],
+      dueAt: 80000, nextId: 7, nextUserId: 1, nextBookingId: 1, nextInvoiceId: 1, users: [], bookings: [], invoices: [],
       locations: ['Delhi', 'Meerut', 'Bijnor', 'Haridwar', 'Dehradun', 'Moradabad'],
       roads: [[0,1,70],[1,0,70],[1,2,90],[2,1,90],[2,3,60],[3,2,60],[3,4,55],[4,3,55],[1,5,100],[5,1,100],[5,2,65],[2,5,65]]
         .map(function (r) { return { u: r[0], v: r[1], d: r[2] }; }),
       vehicles: [
-        { id: 1, plate: 'UP20AB1234', model: 'Maruti Swift Dzire', type: 0, mileage: 45210, status: 0, loc: 0 },
-        { id: 2, plate: 'UP20CD5678', model: 'Tata Ace', type: 1, mileage: 82115, status: 0, loc: 2 },
-        { id: 3, plate: 'UK07EF9012', model: 'Ashok Leyland Viking', type: 2, mileage: 126400, status: 0, loc: 4 },
-        { id: 4, plate: 'DL01GH3456', model: 'Royal Enfield Classic', type: 3, mileage: 18950, status: 1, loc: 1 },
-        { id: 5, plate: 'UP21JK7788', model: 'Mahindra Bolero', type: 0, mileage: 61200, status: 2, loc: 5 },
-        { id: 6, plate: 'UK08LM4321', model: 'Eicher Pro 2049', type: 1, mileage: 97300, status: 0, loc: 3 }
+        { id: 1, plate: 'UP20AB1234', model: 'Maruti Swift Dzire', type: 0, seats: 4, mileage: 45210, status: 0, loc: 0 },
+        { id: 2, plate: 'UP20CD5678', model: 'Tata Ace', type: 1, seats: 1, mileage: 82115, status: 0, loc: 2 },
+        { id: 3, plate: 'UK07EF9012', model: 'Ashok Leyland Viking', type: 2, seats: 40, mileage: 126400, status: 0, loc: 4 },
+        { id: 4, plate: 'DL01GH3456', model: 'Royal Enfield Classic', type: 3, seats: 1, mileage: 18950, status: 1, loc: 1 },
+        { id: 5, plate: 'UP21JK7788', model: 'Mahindra Bolero', type: 0, seats: 7, mileage: 61200, status: 2, loc: 5 },
+        { id: 6, plate: 'UK08LM4321', model: 'Eicher Pro 2049', type: 1, seats: 2, mileage: 97300, status: 0, loc: 3 }
       ]
     };
   }
@@ -476,9 +555,13 @@
     if (!o || !o.vehicles || !o.locations || !o.roads) o = sample();
     if (!o.users) o.users = [];
     if (!o.bookings) o.bookings = [];
+    if (!o.invoices) o.invoices = [];
     if (!o.nextUserId) o.nextUserId = o.users.length + 1;
     if (!o.nextBookingId) o.nextBookingId = o.bookings.length + 1;
+    if (!o.nextInvoiceId) o.nextInvoiceId = o.invoices.length + 1;
     if (!o.dueAt) o.dueAt = 80000;
+    o.vehicles.forEach(function (v) { if (!v.seats) v.seats = DEFAULT_SEATS[v.type] || 1; });
+    o.bookings.forEach(normBooking);
     return o;
   }
   var S = load();
@@ -559,6 +642,14 @@
     });
     return html + '</div>';
   }
+  function linesHtml(f, km) {
+    return '<table class="lines"><tbody>' +
+      '<tr><td>Base fare</td><td>' + money(f.base) + '</td></tr>' +
+      '<tr><td>Distance charge (' + fmt(km) + ' km &times; ' + money(f.perKm) + ')</td><td>' + money(f.perKm * km) + '</td></tr>' +
+      '<tr><td>Subtotal</td><td>' + money(f.subtotal) + '</td></tr>' +
+      '<tr><td>GST (' + Math.round(TAX * 100) + '%)</td><td>' + money(f.tax) + '</td></tr>' +
+      '<tr class="total"><td>Total</td><td>' + money(f.total) + '</td></tr></tbody></table>';
+  }
 
   /* ---------- accounts ---------- */
   var me = null;
@@ -608,6 +699,7 @@
 
   /* ---------- shell: auth, tabs ---------- */
   var tab = null, pendingDel = null, pendingUserDel = null, hlId = null, dispatchNote = '', dispatchKind = '', resetArmed = false;
+  var selInvC = null, selInvA = null, bookModel = null, curGroups = [];
 
   function authTab(t) {
     document.querySelectorAll('[data-auth]').forEach(function (b) { b.setAttribute('aria-selected', b.getAttribute('data-auth') === t ? 'true' : 'false'); });
@@ -652,10 +744,14 @@
   });
 
   function pendingCount() { return S.bookings.filter(function (b) { return b.status === 'Pending'; }).length; }
+  function unpaidCount() { return S.invoices.filter(function (i) { return me && i.userId === me.id && i.status === 'Unpaid'; }).length; }
   function renderTabs() {
     var list = ROLE_TABS[me.role];
     $('tabs').innerHTML = list.map(function (t) {
-      var badge = (t[0] === 'bookings' && pendingCount()) ? '<span class="badge">' + pendingCount() + '</span>' : '';
+      var n = 0;
+      if (t[0] === 'bookings') n = pendingCount();
+      if (t[0] === 'bills') n = unpaidCount();
+      var badge = n ? '<span class="badge">' + n + '</span>' : '';
       var on = t[0] === tab;
       return '<button class="tab" role="tab" data-tab="' + t[0] + '" aria-selected="' + on + '" tabindex="' + (on ? 0 : -1) + '">' + t[1] + badge + '</button>';
     }).join('');
@@ -678,9 +774,9 @@
     $('auth').hidden = true; $('app').hidden = false;
     $('whoName').textContent = u.name;
     $('whoRole').textContent = u.role === 'admin' ? 'Admin' : 'Customer';
-    $('subLine').textContent = u.role === 'admin' ? 'Manage the fleet, roads, bookings and users.' : 'Book a ride and track your requests.';
+    $('subLine').textContent = u.role === 'admin' ? 'Manage the fleet, roads, bookings, billing and users.' : 'Book a ride, track your requests and pay your bills.';
     $('resetBtn').hidden = u.role !== 'admin';
-    pendingDel = null; pendingUserDel = null;
+    pendingDel = null; pendingUserDel = null; selInvC = null; selInvA = null;
     fillSelects.done = false;
     tab = null;
     setTab(ROLE_TABS[u.role][0][0]);
@@ -702,13 +798,15 @@
     function stat(n, l) { return '<div class="stat"><b>' + n + '</b><span>' + l + '</span></div>'; }
     $('stats').innerHTML = stat(S.vehicles.length, 'vehicles') + stat(cnt[0], 'available') + stat(cnt[1], 'on trip') + stat(cnt[2], 'in maintenance') + stat(dueN, 'due for service');
     var list = sortedVehicles();
-    if (!list.length) { $('fleetBody').innerHTML = '<tr><td class="empty" colspan="8">No vehicles yet. Add the first one with the form.</td></tr>'; return; }
+    if (!list.length) { $('fleetBody').innerHTML = '<tr><td class="empty" colspan="9">No vehicles yet. Add the first one with the form.</td></tr>'; return; }
     $('fleetBody').innerHTML = list.map(function (v) {
       var p = pendingDel === v.id;
       return '<tr class="' + (v.id === hlId ? 'hl' : '') + '">' +
         '<td class="num">' + v.id + '</td><td>' + plateHtml(v) + '</td>' +
         '<td>' + esc(v.model) + (v.mileage >= due ? ' <span class="pill st2">Service due</span>' : '') + '</td>' +
-        '<td>' + TYPES[v.type] + '</td><td class="num">' + fmt(v.mileage) + '</td>' +
+        '<td>' + TYPES[v.type] + '</td>' +
+        '<td class="num"><input class="seatsin" type="number" min="1" max="60" value="' + v.seats + '" data-act="seats" data-id="' + v.id + '" aria-label="Passenger capacity of vehicle ' + v.id + '"></td>' +
+        '<td class="num">' + fmt(v.mileage) + '</td>' +
         '<td><select data-act="status" data-id="' + v.id + '" aria-label="Status of vehicle ' + v.id + '">' + opts(STATUS, v.status) + '</select></td>' +
         '<td><select data-act="loc" data-id="' + v.id + '" aria-label="Location of vehicle ' + v.id + '">' + opts(S.locations, v.loc) + '</select></td>' +
         '<td class="right"><button class="btn small ' + (p ? 'danger' : 'ghost') + '" data-act="del" data-id="' + v.id + '">' + (p ? 'Confirm delete' : 'Delete') + '</button></td></tr>';
@@ -720,6 +818,11 @@
     var v = vehById(+t.getAttribute('data-id')); if (!v) return;
     if (act === 'status') v.status = +t.value;
     if (act === 'loc') v.loc = +t.value;
+    if (act === 'seats') {
+      var n = parseInt(t.value, 10);
+      if (isNaN(n) || n < 1 || n > 60) { t.value = v.seats; return; }
+      v.seats = n;
+    }
     save(); renderAll();
   });
   $('fleetBody').addEventListener('click', function (e) {
@@ -732,6 +835,7 @@
   });
   $('sortMode').addEventListener('change', renderFleet);
   $('dueAt').addEventListener('input', function () { if (!isAdmin()) return; var n = parseInt(this.value, 10); S.dueAt = isNaN(n) ? 0 : n; save(); renderFleet(); });
+  $('fType').addEventListener('change', function () { $('fSeats').value = DEFAULT_SEATS[+this.value]; });
   $('findForm').addEventListener('submit', function (e) {
     e.preventDefault();
     var id = parseInt($('findId').value, 10);
@@ -745,14 +849,15 @@
   $('addForm').addEventListener('submit', function (e) {
     e.preventDefault();
     if (!isAdmin()) return;
-    var plate = normPlate($('fPlate').value), model = $('fModel').value.trim(), mileage = parseInt($('fMileage').value, 10);
+    var plate = normPlate($('fPlate').value), model = $('fModel').value.trim(), mileage = parseInt($('fMileage').value, 10), seats = parseInt($('fSeats').value, 10);
     if (!plate) { say('addMsg', 'Enter a plate number.', 'err'); return; }
     if (!model) { say('addMsg', 'Enter the vehicle model.', 'err'); return; }
+    if (isNaN(seats) || seats < 1 || seats > 60) { say('addMsg', 'Passenger capacity must be between 1 and 60.', 'err'); return; }
     if (isNaN(mileage) || mileage < 0) { say('addMsg', 'Mileage must be zero or more.', 'err'); return; }
     if (!S.locations.length) { say('addMsg', 'Add a location first.', 'err'); return; }
     if (plateExists(plate)) { say('addMsg', 'A vehicle with plate ' + plate + ' already exists.', 'err'); return; }
     var id = S.nextId++;
-    S.vehicles.push({ id: id, plate: plate, model: model, type: +$('fType').value, mileage: mileage, status: 0, loc: +$('fLoc').value });
+    S.vehicles.push({ id: id, plate: plate, model: model, type: +$('fType').value, seats: seats, mileage: mileage, status: 0, loc: +$('fLoc').value });
     save(); $('fPlate').value = ''; $('fModel').value = ''; $('fMileage').value = '0';
     say('addMsg', 'Added as vehicle ' + id + '.', 'ok'); renderAll();
   });
@@ -861,6 +966,7 @@
     pool.forEach(function (v) { var d = F.dist[v.loc][q.pick]; (d < INF ? reach : none).push({ v: v, d: d }); });
     var ranked = mergeSort(reach, function (x, y) { return x.d - y.d || x.v.id - y.v.id; });
     if (!pool.length) { body.innerHTML = '<tr><td class="empty" colspan="7">No available vehicle of this type.</td></tr>'; return; }
+    function who(v) { return plateHtml(v) + ' ' + esc(v.model) + ' <span class="muted">' + v.seats + (v.seats === 1 ? ' seat' : ' seats') + '</span>'; }
     var html = ranked.map(function (r, i) {
       var p1 = pathOf(F.next, r.v.loc, q.pick), p2 = q.hasDrop ? tp : [q.pick];
       var full = p1.concat(p2.slice(1));
@@ -870,12 +976,12 @@
         if (q.hasDrop && k === full.length - 1) t += ' (drop-off)';
         return t;
       }).join(' → ');
-      return '<tr class="' + (i === 0 ? 'nearest' : '') + '"><td class="num">' + (i + 1) + '</td><td>' + plateHtml(r.v) + ' ' + esc(r.v.model) + (i === 0 ? ' <span class="pill st0">Nearest</span>' : '') + '</td>' +
+      return '<tr class="' + (i === 0 ? 'nearest' : '') + '"><td class="num">' + (i + 1) + '</td><td>' + who(r.v) + (i === 0 ? ' <span class="pill st0">Nearest</span>' : '') + '</td>' +
         '<td>' + esc(S.locations[r.v.loc]) + '</td><td class="num">' + fmt(r.d) + '</td><td class="num">' + fmt(r.d + leg) + '</td><td>' + esc(route) + '</td>' +
         '<td class="right"><button class="btn small ' + (i === 0 ? 'primary' : '') + '" data-assign="' + r.v.id + '">Assign</button></td></tr>';
     }).join('');
     html += none.map(function (r) {
-      return '<tr><td class="num">-</td><td>' + plateHtml(r.v) + ' ' + esc(r.v.model) + '</td><td>' + esc(S.locations[r.v.loc]) + '</td><td class="num">-</td><td class="num">-</td><td><span class="pill st2">No route to pickup</span></td><td></td></tr>';
+      return '<tr><td class="num">-</td><td>' + who(r.v) + '</td><td>' + esc(S.locations[r.v.loc]) + '</td><td class="num">-</td><td class="num">-</td><td><span class="pill st2">No route to pickup</span></td><td></td></tr>';
     }).join('');
     body.innerHTML = html;
   }
@@ -896,56 +1002,116 @@
     $(id).addEventListener('change', function () { dispatchNote = ''; renderDispatch(); });
   });
 
-  /* ---------- bookings: customer ---------- */
+  /* ---------- booking: customer ---------- */
+  function modelGroups() {   // every distinct model in the fleet, with its passenger capacity range
+    var map = {}, order = [];
+    S.vehicles.forEach(function (v) {
+      var g = map[v.model];
+      if (!g) { g = map[v.model] = { model: v.model, type: v.type, seats: v.seats, min: v.seats, vehicles: [] }; order.push(v.model); }
+      g.vehicles.push(v);
+      if (v.seats > g.seats) g.seats = v.seats;
+      if (v.seats < g.min) g.min = v.seats;
+    });
+    return mergeSort(order.map(function (k) { return map[k]; }), function (a, b) { return a.type - b.type || a.model.localeCompare(b.model); });
+  }
+  function capText(g) { return g.min === g.seats ? String(g.seats) : g.min + ' to ' + g.seats; }
   function quote(pick, drop, type) {
     if (isNaN(pick) || isNaN(drop)) return { error: 'Choose a pickup and a drop-off.' };
     if (pick === drop) return { error: 'Pickup and drop-off must be different places.' };
     var F = floyd(), p = pathOf(F.next, pick, drop);
     if (!p) return { error: 'There is no road route from ' + S.locations[pick] + ' to ' + S.locations[drop] + '.' };
-    var km = F.dist[pick][drop], r = RATES[type];
-    var avail = S.vehicles.filter(function (v) { return v.status === 0 && v.type === type && F.dist[v.loc][pick] < INF; }).length;
-    return { km: km, path: p, fare: Math.round(r.base + r.perKm * km), mins: Math.round(km / AVG_SPEED * 60), avail: avail };
+    var km = F.dist[pick][drop];
+    return { km: km, path: p, f: fareFor(type, km), mins: Math.round(km / AVG_SPEED * 60), F: F };
   }
   function renderBook() {
-    var pick = +$('bPick').value, drop = +$('bDrop').value, type = +$('bType').value;
-    var q = quote(pick, drop, type), box = $('bQuote');
+    var pick = +$('bPick').value, drop = +$('bDrop').value, pax = parseInt($('bPax').value, 10);
+    var paxOk = !isNaN(pax) && pax >= 1 && pax <= 60, F = floyd(), k;
+    curGroups = modelGroups();
+    function fits(g) { return paxOk && g.seats >= pax; }
+    function avail(g) {
+      return g.vehicles.filter(function (v) { return v.seats >= pax && v.status === 0 && !isNaN(pick) && F.dist[v.loc][pick] < INF; }).length;
+    }
+    var sel = -1;
+    for (k = 0; k < curGroups.length; k++) if (fits(curGroups[k]) && curGroups[k].model === bookModel) { sel = k; break; }
+    if (sel < 0) for (k = 0; k < curGroups.length; k++) if (fits(curGroups[k])) { sel = k; break; }
+    var sm = $('bModel');
+    sm.innerHTML = curGroups.length ? curGroups.map(function (g, i) {
+      var ok = fits(g);
+      return '<option value="' + i + '"' + (ok ? '' : ' disabled') + '>' + esc(g.model) + ' · ' + TYPES[g.type] + ' · seats ' + capText(g) +
+        (ok ? ' · ' + money(RATES[g.type].perKm) + '/km · ' + avail(g) + ' available' : ' · too small for ' + (paxOk ? pax : 'this group')) + '</option>';
+    }).join('') : '<option value="">No vehicles in the fleet</option>';
+    if (sel >= 0) sm.value = String(sel);
+    var g = sel >= 0 ? curGroups[sel] : null;
+    bookModel = g ? g.model : null;
+
+    $('capBody').innerHTML = curGroups.length ? curGroups.map(function (x, i) {
+      var ok = fits(x), n = ok ? avail(x) : 0;
+      return '<tr class="' + (i === sel ? 'hl' : '') + '"' + (ok ? '' : ' style="opacity:.5"') + '><td>' + esc(x.model) + '</td><td>' + TYPES[x.type] + '</td>' +
+        '<td class="num"><b>' + capText(x) + '</b> ' + (x.seats === 1 && x.min === 1 ? 'passenger' : 'passengers') + '</td><td class="num">' + money(RATES[x.type].perKm) + '</td>' +
+        '<td class="num">' + (ok ? n : '-') + '</td><td class="right"><button class="btn small ' + (i === sel ? 'primary' : 'ghost') + '" data-pickmodel="' + i + '"' + (ok ? '' : ' disabled') + '>' + (i === sel ? 'Selected' : 'Choose') + '</button></td></tr>';
+    }).join('') : '<tr><td class="empty" colspan="6">No vehicles in the fleet yet.</td></tr>';
+
+    var box = $('bQuote'), q;
+    if (!paxOk) q = { error: 'Enter between 1 and 60 passengers.' };
+    else if (!g) q = { error: 'No vehicle in the fleet seats ' + pax + ' passengers. Try fewer passengers.' };
+    else q = quote(pick, drop, g.type);
     $('bSubmit').disabled = !!q.error;
     if (q.error) { box.innerHTML = '<div class="banner bad">' + esc(q.error) + '</div>'; return; }
-    box.innerHTML = '<div class="route-total">' + money(q.fare) + '<small>estimated fare</small></div>' + legsHtml(q.path, buildAdj()) +
-      '<div class="qmeta"><span>Distance <b>' + fmt(q.km) + ' km</b></span><span>Travel time about <b>' + dur(q.mins) + '</b></span><span><b>' + q.avail + '</b> ' + TYPES[type].toLowerCase() + (q.avail === 1 ? '' : 's') + ' available now</span></div>' +
-      '<p class="caption">Fare is ' + money(RATES[type].base) + ' plus ' + money(RATES[type].perKm) + ' per km. Time assumes an average of ' + AVG_SPEED + ' km/h. Both are estimates.</p>';
+    var av = avail(g);
+    box.innerHTML = '<div class="route-total">' + money(q.f.total) + '<small>estimated total</small></div>' + legsHtml(q.path, buildAdj()) + linesHtml(q.f, q.km) +
+      '<div class="qmeta"><span>Vehicle <b>' + esc(g.model) + '</b></span><span><b>' + paxText(pax) + '</b> of up to ' + g.seats + '</span><span>Distance <b>' + fmt(q.km) + ' km</b></span><span>Travel time about <b>' + dur(q.mins) + '</b></span></div>' +
+      '<p class="caption">' + (av ? av + (av === 1 ? ' vehicle of this model is' : ' vehicles of this model are') + ' available now.' : 'None of this model is available right now. You can still request it and an admin will assign one when possible.') +
+      ' Time assumes an average of ' + AVG_SPEED + ' km/h. Fare and GST are estimates.</p>';
   }
-  ['bPick', 'bDrop', 'bType'].forEach(function (id) { $(id).addEventListener('change', function () { say('bMsg', '', ''); renderBook(); }); });
+  $('capBody').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-pickmodel]'); if (!b) return;
+    var g = curGroups[+b.getAttribute('data-pickmodel')]; if (!g) return;
+    bookModel = g.model; say('bMsg', '', ''); renderBook();
+  });
+  $('bModel').addEventListener('change', function () { var g = curGroups[+this.value]; if (g) bookModel = g.model; say('bMsg', '', ''); renderBook(); });
+  ['bPick', 'bDrop'].forEach(function (id) { $(id).addEventListener('change', function () { say('bMsg', '', ''); renderBook(); }); });
+  $('bPax').addEventListener('input', function () { say('bMsg', '', ''); renderBook(); });
   $('bookForm').addEventListener('submit', function (e) {
     e.preventDefault();
     if (!me) return;
-    var pick = +$('bPick').value, drop = +$('bDrop').value, type = +$('bType').value, q = quote(pick, drop, type);
+    var pick = +$('bPick').value, drop = +$('bDrop').value, pax = parseInt($('bPax').value, 10), g = curGroups[+$('bModel').value];
+    if (g && !isNaN(pax) && g.seats < pax) g = null;
+    if (isNaN(pax) || pax < 1 || pax > 60) { say('bMsg', 'Enter between 1 and 60 passengers.', 'err'); return; }
+    if (!g) { say('bMsg', 'Choose a vehicle model that seats ' + pax + ' passengers.', 'err'); return; }
+    var q = quote(pick, drop, g.type);
     if (q.error) { say('bMsg', q.error, 'err'); return; }
     var b = { id: S.nextBookingId++, userId: me.id, userName: me.name, pick: pick, drop: drop, pickName: S.locations[pick], dropName: S.locations[drop],
-      type: type, km: q.km, fare: q.fare, status: 'Pending', vehicleId: null, plate: '', created: Date.now() };
+      model: g.model, type: g.type, passengers: pax, km: q.km, base: q.f.base, perKm: q.f.perKm, subtotal: q.f.subtotal, tax: q.f.tax, total: q.f.total, fare: q.f.total,
+      status: 'Pending', vehicleId: null, plate: '', invoiceId: null, created: Date.now() };
     S.bookings.push(b); save();
-    say('bMsg', 'Booking #' + b.id + ' requested. You can follow it under My bookings.', 'ok');
+    say('bMsg', 'Booking #' + b.id + ' requested for ' + paxText(pax) + ' in a ' + g.model + '. Follow it under My bookings.', 'ok');
     renderAll();
   });
-  function stClass(s) { return s === 'Pending' ? 'st1' : s === 'Approved' ? 'st0' : s === 'Completed' ? 'st3' : 'st2'; }
+  function stClass(s) { return s === 'Pending' || s === 'Unpaid' ? 'st1' : s === 'Approved' || s === 'Paid' ? 'st0' : s === 'Completed' ? 'st3' : 'st2'; }
   function bookingById(id) { for (var i = 0; i < S.bookings.length; i++) if (S.bookings[i].id === id) return S.bookings[i]; return null; }
   function plateOfBooking(b) {
     if (!b.plate) return '-';
     var v = vehById(b.vehicleId);
     return v ? plateHtml(v) : '<span class="plate">' + esc(b.plate) + '</span>';
   }
+  function askedFor(b) { return esc(b.model) + ' <span class="muted">· ' + paxText(b.passengers) + '</span>'; }
   function renderMine() {
     var mine = mergeSort(S.bookings.filter(function (b) { return b.userId === me.id; }), function (a, b) { return b.created - a.created; });
     $('mineBody').innerHTML = mine.length ? mine.map(function (b) {
-      return '<tr><td class="num">' + b.id + '</td><td>' + esc(b.pickName) + ' → ' + esc(b.dropName) + '</td><td>' + TYPES[b.type] + '</td>' +
-        '<td class="num">' + fmt(b.km) + '</td><td class="num">' + money(b.fare) + '</td>' +
+      var act = b.status === 'Pending' ? '<button class="btn small ghost" data-cancel="' + b.id + '">Cancel</button>' :
+        (b.invoiceId ? '<button class="btn small" data-bill="' + b.invoiceId + '">View bill</button>' : '');
+      return '<tr><td class="num">' + b.id + '</td><td>' + esc(b.pickName) + ' → ' + esc(b.dropName) + '</td><td>' + askedFor(b) + '</td>' +
+        '<td class="num">' + fmt(b.km) + '</td><td class="num">' + money(b.total) + '</td>' +
         '<td><span class="pill ' + stClass(b.status) + '">' + b.status + '</span></td><td>' + plateOfBooking(b) + '</td><td>' + dateStr(b.created) + '</td>' +
-        '<td class="right">' + (b.status === 'Pending' ? '<button class="btn small ghost" data-cancel="' + b.id + '">Cancel</button>' : '') + '</td></tr>';
+        '<td class="right">' + act + '</td></tr>';
     }).join('') : '<tr><td class="empty" colspan="9">No bookings yet. Request your first ride from Book a ride.</td></tr>';
   }
   $('mineBody').addEventListener('click', function (e) {
-    var b = e.target.closest('[data-cancel]'); if (!b || !me) return;
-    var bk = bookingById(+b.getAttribute('data-cancel'));
+    if (!me) return;
+    var c = e.target.closest('[data-cancel]'), v = e.target.closest('[data-bill]');
+    if (v) { selInvC = +v.getAttribute('data-bill'); setTab('bills'); renderAll(); return; }
+    if (!c) return;
+    var bk = bookingById(+c.getAttribute('data-cancel'));
     if (!bk || bk.userId !== me.id || bk.status !== 'Pending') return;
     bk.status = 'Cancelled'; save(); say('mMsg', 'Booking #' + bk.id + ' cancelled.', ''); renderAll();
   });
@@ -960,32 +1126,116 @@
       var act = '';
       if (b.status === 'Pending') act = '<button class="btn small primary" data-bk="approve" data-id="' + b.id + '">Approve</button><button class="btn small ghost" data-bk="reject" data-id="' + b.id + '">Reject</button>';
       else if (b.status === 'Approved') act = '<button class="btn small" data-bk="complete" data-id="' + b.id + '">Mark completed</button>';
-      return '<tr><td class="num">' + b.id + '</td><td>' + esc(b.userName) + '</td><td>' + esc(b.pickName) + ' → ' + esc(b.dropName) + '</td><td>' + TYPES[b.type] + '</td>' +
-        '<td class="num">' + fmt(b.km) + '</td><td class="num">' + money(b.fare) + '</td><td><span class="pill ' + stClass(b.status) + '">' + b.status + '</span></td>' +
+      else if (b.invoiceId) act = '<button class="btn small ghost" data-bk="bill" data-id="' + b.id + '">View invoice</button>';
+      return '<tr><td class="num">' + b.id + '</td><td>' + esc(b.userName) + '</td><td>' + esc(b.pickName) + ' → ' + esc(b.dropName) + '</td><td>' + askedFor(b) + '</td>' +
+        '<td class="num">' + fmt(b.km) + '</td><td class="num">' + money(b.total) + '</td><td><span class="pill ' + stClass(b.status) + '">' + b.status + '</span></td>' +
         '<td>' + plateOfBooking(b) + '</td><td class="right"><div class="actions">' + act + '</div></td></tr>';
     }).join('') : '<tr><td class="empty" colspan="9">No booking requests yet. They appear here when customers book a ride.</td></tr>';
+  }
+  function matchesBooking(v, b) {
+    return v.model === b.model || (b.model === TYPES[b.type] && v.type === b.type);   // second case covers older saved bookings
+  }
+  function makeInvoice(b) {
+    var inv = { id: S.nextInvoiceId++, bookingId: b.id, userId: b.userId, userName: b.userName, trip: b.pickName + ' → ' + b.dropName,
+      model: b.model, plate: b.plate, passengers: b.passengers, km: b.km, base: b.base, perKm: b.perKm, subtotal: b.subtotal, tax: b.tax, total: b.total,
+      status: 'Unpaid', method: '', created: Date.now(), paidAt: null };
+    S.invoices.push(inv); b.invoiceId = inv.id; return inv;
   }
   $('abBody').addEventListener('click', function (e) {
     if (!isAdmin()) return;
     var btn = e.target.closest('[data-bk]'); if (!btn) return;
     var b = bookingById(+btn.getAttribute('data-id')), act = btn.getAttribute('data-bk');
     if (!b) return;
+    if (act === 'bill' && b.invoiceId) { selInvA = b.invoiceId; setTab('invoices'); renderAll(); return; }
     if (act === 'reject' && b.status === 'Pending') { b.status = 'Rejected'; save(); say('abMsg', 'Booking #' + b.id + ' rejected.', ''); renderAll(); return; }
     if (act === 'complete' && b.status === 'Approved') {
       b.status = 'Completed';
       var cv = vehById(b.vehicleId); if (cv && cv.status === 1) cv.status = 0;
-      save(); say('abMsg', 'Booking #' + b.id + ' completed. The vehicle is available again.', 'ok'); renderAll(); return;
+      var inv = b.invoiceId ? null : makeInvoice(b);
+      save(); say('abMsg', 'Booking #' + b.id + ' completed. ' + (inv ? invNo(inv.id) + ' for ' + money(inv.total) + ' was created. ' : '') + 'The vehicle is available again.', 'ok'); renderAll(); return;
     }
     if (act === 'approve' && b.status === 'Pending') {
       var F = floyd(), leg = F.dist[b.pick][b.drop];
       if (leg >= INF) { say('abMsg', 'No road route from ' + b.pickName + ' to ' + b.dropName + ' any more. Add a road first.', 'err'); return; }
-      var pool = S.vehicles.filter(function (v) { return v.status === 0 && v.type === b.type && F.dist[v.loc][b.pick] < INF; });
-      if (!pool.length) { say('abMsg', 'No available ' + TYPES[b.type].toLowerCase() + ' can reach ' + b.pickName + ' right now.', 'err'); return; }
+      var pool = S.vehicles.filter(function (v) { return v.status === 0 && matchesBooking(v, b) && v.seats >= b.passengers && F.dist[v.loc][b.pick] < INF; });
+      if (!pool.length) { say('abMsg', 'No available ' + b.model + ' that seats ' + paxText(b.passengers) + ' can reach ' + b.pickName + ' right now.', 'err'); return; }
       var v = mergeSort(pool, function (x, y) { return F.dist[x.loc][b.pick] - F.dist[y.loc][b.pick] || x.id - y.id; })[0];
       var d1 = F.dist[v.loc][b.pick];
       v.mileage += d1 + leg; v.loc = b.drop; v.status = 1;
       b.status = 'Approved'; b.vehicleId = v.id; b.plate = v.plate;
-      save(); say('abMsg', 'Booking #' + b.id + ' approved. ' + v.plate + ' is ' + fmt(d1) + ' km from pickup and covers ' + fmt(d1 + leg) + ' km in total.', 'ok'); renderAll();
+      save(); say('abMsg', 'Booking #' + b.id + ' approved. ' + v.plate + ' (' + v.model + ', ' + v.seats + ' seats) is ' + fmt(d1) + ' km from pickup and covers ' + fmt(d1 + leg) + ' km in total.', 'ok'); renderAll();
+    }
+  });
+
+  /* ---------- billing ---------- */
+  function invNo(id) { return 'INV-' + ('0000' + id).slice(-4); }
+  function invoiceById(id) { for (var i = 0; i < S.invoices.length; i++) if (S.invoices[i].id === id) return S.invoices[i]; return null; }
+  function sumTotal(list) { return list.reduce(function (s, i) { return s + i.total; }, 0); }
+  function invoiceHtml(inv, canPay) {
+    var f = { base: inv.base, perKm: inv.perKm, subtotal: inv.subtotal, tax: inv.tax, total: inv.total };
+    var v = vehById(inv.id && S.bookings.length ? (bookingById(inv.bookingId) || {}).vehicleId : null);
+    var foot = '';
+    if (inv.status === 'Paid') foot = '<p class="note ok">Paid by ' + esc(inv.method) + ' on ' + dateStr(inv.paidAt) + '.</p>';
+    else if (canPay) foot = '<div class="row"><select id="payMethod" aria-label="Payment method">' + opts(PAY_METHODS, 0) + '</select>' +
+      '<button class="btn primary" data-pay="' + inv.id + '">Pay ' + money(inv.total) + '</button></div><p class="caption">Demo only. No real payment is taken.</p>';
+    return '<div class="invhead"><div><div class="lbl">Invoice</div><h2>' + invNo(inv.id) + '</h2></div><span class="pill ' + stClass(inv.status) + '">' + inv.status + '</span></div>' +
+      '<div class="invmeta"><div><span class="lbl">Billed to</span>' + esc(inv.userName) + '</div><div><span class="lbl">Date</span>' + dateStr(inv.created) + '</div>' +
+      '<div><span class="lbl">Trip</span>' + esc(inv.trip) + '</div><div><span class="lbl">Vehicle</span>' + (inv.plate ? esc(inv.plate) + ' · ' : '') + esc(inv.model) + '</div>' +
+      '<div><span class="lbl">Passengers</span>' + inv.passengers + '</div><div><span class="lbl">Distance</span>' + fmt(inv.km) + ' km</div></div>' +
+      linesHtml(f, inv.km) + '<div class="invfoot">' + foot + '</div>';
+  }
+  function emptyDetail(text) { return '<h2>Invoice</h2><p class="muted">' + text + '</p>'; }
+  function renderBills() {
+    var mine = mergeSort(S.invoices.filter(function (i) { return i.userId === me.id; }), function (a, b) {
+      return (a.status === 'Unpaid' ? 0 : 1) - (b.status === 'Unpaid' ? 0 : 1) || b.created - a.created;
+    });
+    var unpaid = mine.filter(function (i) { return i.status === 'Unpaid'; }), paid = mine.filter(function (i) { return i.status === 'Paid'; });
+    function stat(n, l) { return '<div class="stat"><b>' + n + '</b><span>' + l + '</span></div>'; }
+    $('billStats').innerHTML = stat(money(sumTotal(unpaid)), 'to pay') + stat(money(sumTotal(paid)), 'paid') + stat(mine.length, mine.length === 1 ? 'invoice' : 'invoices');
+    if (!mine.some(function (i) { return i.id === selInvC; })) selInvC = mine.length ? mine[0].id : null;
+    $('billBody').innerHTML = mine.length ? mine.map(function (i) {
+      return '<tr class="' + (i.id === selInvC ? 'hl' : '') + '"><td>' + invNo(i.id) + '</td><td>' + esc(i.trip) + '</td><td class="num">' + money(i.total) + '</td>' +
+        '<td><span class="pill ' + stClass(i.status) + '">' + i.status + '</span></td><td>' + dateStr(i.created) + '</td>' +
+        '<td class="right"><button class="btn small ' + (i.status === 'Unpaid' ? 'primary' : 'ghost') + '" data-view="' + i.id + '">' + (i.status === 'Unpaid' ? 'View and pay' : 'View') + '</button></td></tr>';
+    }).join('') : '<tr><td class="empty" colspan="6">No invoices yet. A bill is created when an admin marks your trip completed.</td></tr>';
+    var cur = selInvC ? invoiceById(selInvC) : null;
+    $('billDetail').innerHTML = cur ? invoiceHtml(cur, true) : emptyDetail('Select an invoice to see the full bill.');
+  }
+  $('billBody').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-view]'); if (!b) return;
+    selInvC = +b.getAttribute('data-view'); renderBills();
+  });
+  $('billDetail').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-pay]'); if (!b || !me) return;
+    var inv = invoiceById(+b.getAttribute('data-pay'));
+    if (!inv || inv.userId !== me.id || inv.status !== 'Unpaid') return;
+    var m = PAY_METHODS[+$('payMethod').value] || 'UPI';
+    inv.status = 'Paid'; inv.method = m; inv.paidAt = Date.now(); save();
+    say('bnMsg', invNo(inv.id) + ' paid by ' + m + '. Thank you.', 'ok'); renderAll();
+  });
+  function renderAdminInvoices() {
+    var all = mergeSort(S.invoices, function (a, b) { return (a.status === 'Unpaid' ? 0 : 1) - (b.status === 'Unpaid' ? 0 : 1) || b.created - a.created; });
+    var unpaid = all.filter(function (i) { return i.status === 'Unpaid'; }), paid = all.filter(function (i) { return i.status === 'Paid'; });
+    function stat(n, l) { return '<div class="stat"><b>' + n + '</b><span>' + l + '</span></div>'; }
+    $('invStats').innerHTML = stat(money(sumTotal(all)), 'billed') + stat(money(sumTotal(paid)), 'collected') + stat(money(sumTotal(unpaid)), 'outstanding') + stat(all.length, all.length === 1 ? 'invoice' : 'invoices');
+    if (!all.some(function (i) { return i.id === selInvA; })) selInvA = all.length ? all[0].id : null;
+    $('aiBody').innerHTML = all.length ? all.map(function (i) {
+      return '<tr class="' + (i.id === selInvA ? 'hl' : '') + '"><td>' + invNo(i.id) + '</td><td>' + esc(i.userName) + '</td><td>' + esc(i.trip) + '</td><td class="num">' + money(i.total) + '</td>' +
+        '<td><span class="pill ' + stClass(i.status) + '">' + i.status + '</span></td><td class="right"><div class="actions"><button class="btn small ghost" data-aview="' + i.id + '">View</button>' +
+        (i.status === 'Unpaid' ? '<button class="btn small" data-markpaid="' + i.id + '">Mark paid</button>' : '') + '</div></td></tr>';
+    }).join('') : '<tr><td class="empty" colspan="6">No invoices yet. One is created when you mark an approved booking completed.</td></tr>';
+    var cur = selInvA ? invoiceById(selInvA) : null;
+    $('aiDetail').innerHTML = cur ? invoiceHtml(cur, false) : emptyDetail('Select an invoice to see the full bill.');
+  }
+  $('aiBody').addEventListener('click', function (e) {
+    if (!isAdmin()) return;
+    var v = e.target.closest('[data-aview]'), m = e.target.closest('[data-markpaid]');
+    if (v) { selInvA = +v.getAttribute('data-aview'); renderAdminInvoices(); return; }
+    if (m) {
+      var inv = invoiceById(+m.getAttribute('data-markpaid'));
+      if (!inv || inv.status !== 'Unpaid') return;
+      inv.status = 'Paid'; inv.method = 'Cash'; inv.paidAt = Date.now(); selInvA = inv.id; save();
+      say('aiMsg', invNo(inv.id) + ' marked as paid by cash.', 'ok'); renderAll();
     }
   });
 
@@ -1025,9 +1275,6 @@
     dd.innerHTML = '<option value="-1">No drop-off (pickup only)</option>' +
       S.locations.map(function (n, i) { return '<option value="' + i + '">' + esc(n) + '</option>'; }).join('');
     if (prevDrop !== '' && +prevDrop < S.locations.length) dd.value = prevDrop;
-    var bt = $('bType'), prevT = bt.value;
-    bt.innerHTML = TYPES.map(function (t, i) { return '<option value="' + i + '">' + t + ' · ' + money(RATES[i].perKm) + '/km</option>'; }).join('');
-    if (prevT !== '') bt.value = prevT;
     if (S.locations.length > 1 && !fillSelects.done) {
       var far = String(Math.min(4, S.locations.length - 1));
       $('nTo').value = '1'; $('rTo').value = far; dd.value = far; $('bDrop').value = far;
@@ -1039,15 +1286,15 @@
     fillSelects();
     renderTabs();
     renderRoute();
-    if (isAdmin()) { renderFleet(); renderNetwork(); renderDispatch(); renderAdminBookings(); renderUsers(); }
-    else { renderBook(); renderMine(); }
+    if (isAdmin()) { renderFleet(); renderNetwork(); renderDispatch(); renderAdminBookings(); renderAdminInvoices(); renderUsers(); }
+    else { renderBook(); renderMine(); renderBills(); }
   }
   $('resetBtn').addEventListener('click', function () {
     if (!isAdmin()) return;
     if (!resetArmed) { resetArmed = true; this.textContent = 'Click again to confirm reset'; return; }
-    resetArmed = false; this.textContent = 'Reset fleet and bookings to sample data';
+    resetArmed = false; this.textContent = 'Reset fleet, bookings and invoices to sample data';
     var fresh = sample(); fresh.users = S.users; fresh.nextUserId = S.nextUserId;
-    S = fresh; save(); hlId = null; pendingDel = null; dispatchNote = ''; fillSelects.done = false;
+    S = fresh; save(); hlId = null; pendingDel = null; dispatchNote = ''; selInvA = null; selInvC = null; fillSelects.done = false;
     $('dueAt').value = S.dueAt; say('findMsg', 'Sample data restored.', ''); renderAll();
   });
 
