@@ -3,8 +3,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-  /* Layout: single column workspace. Road-sign type, plates styled like Indian number plates
-     (white private, yellow commercial), one dashed lane marking under the header. */
+  /* Layout: login screen, then a role-based workspace (admin or customer).
+     Road-sign type, plates styled like Indian number plates (white private, yellow commercial),
+     one dashed lane marking under the header. */
   :root {
     --bg: #EDF0F1;
     --surface: #FFFFFF;
@@ -49,12 +50,18 @@
     padding-inline: 16px; padding-block: 20px 48px;
   }
   .wrap { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+  .col { display: flex; flex-direction: column; gap: 20px; }
   h1, h2, h3 { font-family: var(--f-display); text-transform: uppercase; letter-spacing: .05em; margin: 0; text-wrap: balance; }
   h1 { font-size: clamp(32px, 6vw, 44px); line-height: 1; }
   h2 { font-size: 22px; }
-  h3 { font-size: 17px; color: var(--ink-2); }
   .sub { margin: 6px 0 0; color: var(--ink-2); }
   .roadline { height: 4px; margin-top: 14px; background: repeating-linear-gradient(90deg, var(--lane) 0 18px, transparent 18px 32px); }
+
+  .head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px 24px; }
+  .userbox { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .who { display: flex; flex-direction: column; line-height: 1.2; text-align: right; }
+  .who b { font-weight: 600; }
+  .who span { font-size: 13px; color: var(--ink-2); }
 
   .tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--line); }
   .tab {
@@ -63,6 +70,7 @@
   }
   .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
   .tab:focus-visible, .btn:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .badge { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 4px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); font: 600 13px var(--f-body); text-align: center; letter-spacing: 0; }
 
   .panel { display: flex; flex-direction: column; gap: 20px; }
   .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-width: 0; }
@@ -92,6 +100,7 @@
   .btn.danger { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
   .btn.small { min-height: 32px; padding: 4px 10px; font-size: 14px; }
   .btn.ghost { background: transparent; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
 
   .toolbar { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 8px; }
   .note { margin: 6px 0 12px; min-height: 1.4em; color: var(--ink-2); font-size: 14px; }
@@ -109,9 +118,10 @@
   th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); padding: 8px 10px; border-bottom: 2px solid var(--line); white-space: nowrap; }
   td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
   td.num, th.num { font-variant-numeric: tabular-nums; text-align: right; }
-  td.right { text-align: right; }
+  td.right { text-align: right; white-space: nowrap; }
   tr.hl td { background: var(--accent-soft); }
   td.empty { text-align: center; color: var(--ink-2); padding: 28px 10px; }
+  .actions { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
 
   .plate {
     display: inline-block; font: 700 17px var(--f-display); letter-spacing: .09em; white-space: nowrap;
@@ -122,6 +132,7 @@
   .st0 { background: var(--accent-soft); color: var(--accent); }
   .st1 { background: var(--warn-soft); color: var(--warn); }
   .st2 { background: var(--bad-soft); color: var(--bad); }
+  .st3 { background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--line); }
 
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .chip { background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; font-weight: 500; }
@@ -143,180 +154,306 @@
   .legs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
   .legs .km { font: 500 13px var(--f-mono); color: var(--ink-2); }
   .legs .arrow { color: var(--lane); font-weight: 700; }
+  .qmeta { display: flex; flex-wrap: wrap; gap: 6px 24px; margin-top: 12px; color: var(--ink-2); }
+  .qmeta b { color: var(--ink); font-weight: 600; }
 
   .nearest { background: var(--accent-soft); }
   footer { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; color: var(--ink-2); font-size: 13px; }
+
+  .authwrap { display: flex; justify-content: center; padding-top: 5vh; }
+  .authcard { width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 16px; padding: 24px; }
+  .demo { border-top: 1px solid var(--line); padding-top: 14px; font-size: 14px; color: var(--ink-2); }
+  .demo .row { margin-top: 8px; }
+  .demo code { font-family: var(--f-mono); font-size: 13px; color: var(--ink); }
   @media (prefers-reduced-motion: no-preference) { .btn { transition: background .12s; } }
 </style>
 
 <div class="wrap">
-  <header>
-    <h1>Fleet Desk</h1>
-    <p class="sub">Vehicles, roads and routes in one place.</p>
-    <div class="roadline" aria-hidden="true"></div>
-  </header>
 
-  <div class="tabs" role="tablist" id="tabs" aria-label="Sections">
-    <button class="tab" role="tab" data-tab="fleet" aria-selected="true">Fleet</button>
-    <button class="tab" role="tab" data-tab="network" aria-selected="false" tabindex="-1">Road network</button>
-    <button class="tab" role="tab" data-tab="routes" aria-selected="false" tabindex="-1">Shortest route</button>
-    <button class="tab" role="tab" data-tab="dispatch" aria-selected="false" tabindex="-1">Dispatch</button>
+  <!-- ============ LOGIN / REGISTER ============ -->
+  <div id="auth" class="authwrap" hidden>
+    <div class="card authcard">
+      <div>
+        <h1>Fleet Desk</h1>
+        <p class="sub">Vehicles, roads and routes in one place.</p>
+        <div class="roadline" aria-hidden="true"></div>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Account">
+        <button class="tab" role="tab" data-auth="login" aria-selected="true">Log in</button>
+        <button class="tab" role="tab" data-auth="register" aria-selected="false">Register</button>
+      </div>
+
+      <form id="loginForm" class="stack" autocomplete="on">
+        <div><label for="lUser">Username</label><input id="lUser" autocomplete="username" maxlength="20"></div>
+        <div><label for="lPass">Password</label><input id="lPass" type="password" autocomplete="current-password"></div>
+        <button class="btn primary" type="submit">Log in</button>
+      </form>
+
+      <form id="regForm" class="stack" autocomplete="on" hidden>
+        <div><label for="rName">Full name</label><input id="rName" autocomplete="name" maxlength="40"></div>
+        <div><label for="rUser">Username</label><input id="rUser" autocomplete="username" maxlength="20" placeholder="3 to 20 letters, numbers or _"></div>
+        <div><label for="rPass">Password</label><input id="rPass" type="password" autocomplete="new-password" placeholder="At least 6 characters"></div>
+        <div><label for="rPass2">Confirm password</label><input id="rPass2" type="password" autocomplete="new-password"></div>
+        <button class="btn primary" type="submit">Create customer account</button>
+      </form>
+      <p id="authMsg" class="note" aria-live="polite"></p>
+
+      <div class="demo">
+        Demo accounts for trying the app:
+        <div class="row">
+          <button class="btn small" type="button" id="demoAdmin">Fill admin demo</button>
+          <button class="btn small" type="button" id="demoCust">Fill customer demo</button>
+        </div>
+        <p class="caption">Admin <code>admin</code> / <code>admin123</code>. Customer <code>demo</code> / <code>demo123</code>. Accounts and bookings are stored in this browser only.</p>
+      </div>
+    </div>
   </div>
 
-  <!-- FLEET -->
-  <section id="p-fleet" class="panel" role="tabpanel">
-    <div class="statrow" id="stats"></div>
-    <div class="split">
-      <div class="card">
-        <div class="toolbar">
-          <div>
-            <label for="sortMode">Sort by</label>
-            <select id="sortMode">
-              <option value="stored">Order added</option>
-              <option value="plate">Plate, A to Z</option>
-              <option value="mileage">Mileage, highest first</option>
-              <option value="id">ID</option>
-            </select>
+  <!-- ============ APP ============ -->
+  <div id="app" class="col" hidden>
+    <header>
+      <div class="head">
+        <div>
+          <h1>Fleet Desk</h1>
+          <p class="sub" id="subLine">Vehicles, roads and routes in one place.</p>
+        </div>
+        <div class="userbox">
+          <div class="who"><b id="whoName"></b><span id="whoRole"></span></div>
+          <button class="btn small" id="logoutBtn" type="button">Log out</button>
+        </div>
+      </div>
+      <div class="roadline" aria-hidden="true"></div>
+    </header>
+
+    <div class="tabs" role="tablist" id="tabs" aria-label="Sections"></div>
+
+    <!-- FLEET (admin) -->
+    <section id="p-fleet" class="panel" role="tabpanel" hidden>
+      <div class="statrow" id="stats"></div>
+      <div class="split">
+        <div class="card">
+          <div class="toolbar">
+            <div>
+              <label for="sortMode">Sort by</label>
+              <select id="sortMode">
+                <option value="stored">Order added</option>
+                <option value="plate">Plate, A to Z</option>
+                <option value="mileage">Mileage, highest first</option>
+                <option value="id">ID</option>
+              </select>
+            </div>
+            <div>
+              <label for="dueAt">Service due at (km)</label>
+              <input id="dueAt" type="number" min="0" step="1000" value="80000">
+            </div>
+            <form id="findForm">
+              <label for="findId">Find by ID</label>
+              <div class="row"><input id="findId" type="number" min="1" placeholder="e.g. 4"><button class="btn" type="submit">Find</button></div>
+            </form>
           </div>
-          <div>
-            <label for="dueAt">Service due at (km)</label>
-            <input id="dueAt" type="number" min="0" step="1000" value="80000">
+          <p id="findMsg" class="note" aria-live="polite"></p>
+          <div class="tablewrap">
+            <table>
+              <thead><tr><th class="num">ID</th><th>Plate</th><th>Model</th><th>Type</th><th class="num">Mileage (km)</th><th>Status</th><th>Location</th><th></th></tr></thead>
+              <tbody id="fleetBody"></tbody>
+            </table>
           </div>
-          <form id="findForm">
-            <label for="findId">Find by ID</label>
-            <div class="row"><input id="findId" type="number" min="1" placeholder="e.g. 4"><button class="btn" type="submit">Find</button></div>
+          <p class="caption">Lists are presorted with merge sort. Find by ID runs a binary search on the sorted records.</p>
+        </div>
+
+        <form id="addForm" class="card stack" autocomplete="off">
+          <h2>Add vehicle</h2>
+          <div><label for="fPlate">Plate number</label><input id="fPlate" placeholder="UP20AB1234" maxlength="12"></div>
+          <div><label for="fModel">Model</label><input id="fModel" placeholder="Maruti Swift" maxlength="30"></div>
+          <div><label for="fType">Type</label><select id="fType"><option value="0">Car</option><option value="1">Truck</option><option value="2">Bus</option><option value="3">Bike</option></select></div>
+          <div><label for="fMileage">Mileage (km)</label><input id="fMileage" type="number" min="0" value="0"></div>
+          <div><label for="fLoc">Current location</label><select id="fLoc"></select></div>
+          <button class="btn primary" type="submit">Add vehicle</button>
+          <p id="addMsg" class="note" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+
+    <!-- NETWORK (admin) -->
+    <section id="p-network" class="panel" role="tabpanel" hidden>
+      <div class="two">
+        <div class="card stack">
+          <h2>Locations</h2>
+          <div class="chips" id="locChips"></div>
+          <form id="locForm" autocomplete="off">
+            <label for="nName">New location</label>
+            <div class="row"><input id="nName" placeholder="City or depot name" maxlength="24"><button class="btn" type="submit">Add</button></div>
+          </form>
+          <p id="locMsg" class="note" aria-live="polite"></p>
+        </div>
+        <div class="card stack">
+          <h2>Add road</h2>
+          <form id="roadForm" class="stack" autocomplete="off">
+            <div class="row">
+              <div style="flex:1 1 130px"><label for="nFrom">From</label><select id="nFrom"></select></div>
+              <div style="flex:1 1 130px"><label for="nTo">To</label><select id="nTo"></select></div>
+              <div style="flex:1 1 90px"><label for="nKm">Distance (km)</label><input id="nKm" type="number" min="1" value="50"></div>
+            </div>
+            <label class="check" for="nTwo"><input id="nTwo" type="checkbox" checked> Two-way road</label>
+            <button class="btn primary" type="submit">Save road</button>
+            <p id="roadMsg" class="note" aria-live="polite"></p>
           </form>
         </div>
-        <p id="findMsg" class="note" aria-live="polite"></p>
+      </div>
+
+      <div class="card">
+        <h2>Roads</h2>
         <div class="tablewrap">
           <table>
-            <thead><tr><th class="num">ID</th><th>Plate</th><th>Model</th><th>Type</th><th class="num">Mileage (km)</th><th>Status</th><th>Location</th><th></th></tr></thead>
-            <tbody id="fleetBody"></tbody>
+            <thead><tr><th>From</th><th>To</th><th class="num">Distance (km)</th><th></th></tr></thead>
+            <tbody id="roadBody"></tbody>
           </table>
         </div>
-        <p class="caption">Lists are presorted with merge sort. Find by ID runs a binary search on the sorted records.</p>
       </div>
 
-      <form id="addForm" class="card stack" autocomplete="off">
-        <h2>Add vehicle</h2>
-        <div><label for="fPlate">Plate number</label><input id="fPlate" placeholder="UP20AB1234" maxlength="12"></div>
-        <div><label for="fModel">Model</label><input id="fModel" placeholder="Maruti Swift" maxlength="30"></div>
-        <div><label for="fType">Type</label><select id="fType"><option value="0">Car</option><option value="1">Truck</option><option value="2">Bus</option><option value="3">Bike</option></select></div>
-        <div><label for="fMileage">Mileage (km)</label><input id="fMileage" type="number" min="0" value="0"></div>
-        <div><label for="fLoc">Current location</label><select id="fLoc"></select></div>
-        <button class="btn primary" type="submit">Add vehicle</button>
-        <p id="addMsg" class="note" aria-live="polite"></p>
-      </form>
-    </div>
-  </section>
+      <div class="card">
+        <h2>Which places connect</h2>
+        <div id="reachBanner"></div>
+        <div class="tablewrap" id="reachWrap"></div>
+        <p class="caption">Warshall's algorithm. A filled cell means a vehicle can get from the row location to the column location by some chain of roads. One-way roads count in their own direction only.</p>
+      </div>
 
-  <!-- NETWORK -->
-  <section id="p-network" class="panel" role="tabpanel" hidden>
-    <div class="two">
+      <div class="card">
+        <h2>Shortest distances (km)</h2>
+        <div class="tablewrap" id="distWrap"></div>
+        <p class="caption">Floyd-Warshall algorithm. Each cell is the shortest total distance from the row location to the column location.</p>
+      </div>
+    </section>
+
+    <!-- ROUTES (both roles) -->
+    <section id="p-routes" class="panel" role="tabpanel" hidden>
       <div class="card stack">
-        <h2>Locations</h2>
-        <div class="chips" id="locChips"></div>
-        <form id="locForm" autocomplete="off">
-          <label for="nName">New location</label>
-          <div class="row"><input id="nName" placeholder="City or depot name" maxlength="24"><button class="btn" type="submit">Add</button></div>
-        </form>
-        <p id="locMsg" class="note" aria-live="polite"></p>
+        <h2>Shortest route</h2>
+        <div class="row">
+          <div style="flex:1 1 160px"><label for="rFrom">From</label><select id="rFrom"></select></div>
+          <div style="flex:1 1 160px"><label for="rTo">To</label><select id="rTo"></select></div>
+        </div>
+        <div id="routeOut" aria-live="polite"></div>
       </div>
+    </section>
+
+    <!-- DISPATCH (admin) -->
+    <section id="p-dispatch" class="panel" role="tabpanel" hidden>
       <div class="card stack">
-        <h2>Add road</h2>
-        <form id="roadForm" class="stack" autocomplete="off">
-          <div class="row">
-            <div style="flex:1 1 130px"><label for="nFrom">From</label><select id="nFrom"></select></div>
-            <div style="flex:1 1 130px"><label for="nTo">To</label><select id="nTo"></select></div>
-            <div style="flex:1 1 90px"><label for="nKm">Distance (km)</label><input id="nKm" type="number" min="1" value="50"></div>
-          </div>
-          <label class="check" for="nTwo"><input id="nTwo" type="checkbox" checked> Two-way road</label>
-          <button class="btn primary" type="submit">Save road</button>
-          <p id="roadMsg" class="note" aria-live="polite"></p>
+        <h2>Dispatch nearest vehicle</h2>
+        <div class="row">
+          <div style="flex:1 1 160px"><label for="dDest">Pickup location</label><select id="dDest"></select></div>
+          <div style="flex:1 1 160px"><label for="dDrop">Drop-off destination</label><select id="dDrop"></select></div>
+          <div style="flex:1 1 160px"><label for="dType">Vehicle type</label>
+            <select id="dType"><option value="any">Any</option><option value="0">Car</option><option value="1">Truck</option><option value="2">Bus</option><option value="3">Bike</option></select></div>
+        </div>
+        <div id="dTrip" aria-live="polite"></div>
+        <p id="dMsg" class="note" aria-live="polite"></p>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th class="num">#</th><th>Vehicle</th><th>Now at</th><th class="num">To pickup (km)</th><th class="num">Total trip (km)</th><th>Full route</th><th></th></tr></thead>
+            <tbody id="dispBody"></tbody>
+          </table>
+        </div>
+        <p class="caption">Only available vehicles are listed. The total trip is vehicle to pickup plus pickup to drop-off. Distances come from Floyd-Warshall and candidates are presorted by distance with merge sort. Assigning moves the vehicle to the drop-off and adds the whole trip to its mileage.</p>
+      </div>
+    </section>
+
+    <!-- BOOKINGS (admin) -->
+    <section id="p-bookings" class="panel" role="tabpanel" hidden>
+      <div class="card">
+        <h2>Booking requests</h2>
+        <p id="abMsg" class="note" aria-live="polite"></p>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th class="num">ID</th><th>Customer</th><th>Trip</th><th>Type</th><th class="num">Km</th><th class="num">Fare</th><th>Status</th><th>Vehicle</th><th></th></tr></thead>
+            <tbody id="abBody"></tbody>
+          </table>
+        </div>
+        <p class="caption">Approve assigns the nearest available vehicle of the requested type, found with Floyd-Warshall. Requests are presorted with pending first, then newest.</p>
+      </div>
+    </section>
+
+    <!-- USERS (admin) -->
+    <section id="p-users" class="panel" role="tabpanel" hidden>
+      <div class="card">
+        <h2>Users</h2>
+        <p id="uMsg" class="note" aria-live="polite"></p>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Joined</th><th class="num">Bookings</th><th></th></tr></thead>
+            <tbody id="userBody"></tbody>
+          </table>
+        </div>
+        <p class="caption">New sign-ups are customers. An admin can promote a customer to admin, or remove an account. You cannot change your own role or delete yourself.</p>
+      </div>
+    </section>
+
+    <!-- BOOK (customer) -->
+    <section id="p-book" class="panel" role="tabpanel" hidden>
+      <div class="two">
+        <form id="bookForm" class="card stack" autocomplete="off">
+          <h2>Book a ride</h2>
+          <div><label for="bPick">Pickup location</label><select id="bPick"></select></div>
+          <div><label for="bDrop">Drop-off destination</label><select id="bDrop"></select></div>
+          <div><label for="bType">Vehicle type</label><select id="bType"></select></div>
+          <button class="btn primary" type="submit" id="bSubmit">Request booking</button>
+          <p id="bMsg" class="note" aria-live="polite"></p>
         </form>
+        <div class="card">
+          <h2>Trip estimate</h2>
+          <div id="bQuote" aria-live="polite"></div>
+        </div>
       </div>
-    </div>
+    </section>
 
-    <div class="card">
-      <h2>Roads</h2>
-      <div class="tablewrap">
-        <table>
-          <thead><tr><th>From</th><th>To</th><th class="num">Distance (km)</th><th></th></tr></thead>
-          <tbody id="roadBody"></tbody>
-        </table>
+    <!-- MY BOOKINGS (customer) -->
+    <section id="p-mine" class="panel" role="tabpanel" hidden>
+      <div class="card">
+        <h2>My bookings</h2>
+        <p id="mMsg" class="note" aria-live="polite"></p>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th class="num">ID</th><th>Trip</th><th>Type</th><th class="num">Km</th><th class="num">Fare</th><th>Status</th><th>Vehicle</th><th>Requested</th><th></th></tr></thead>
+            <tbody id="mineBody"></tbody>
+          </table>
+        </div>
+        <p class="caption">A request stays pending until an admin approves it and assigns a vehicle.</p>
       </div>
-    </div>
+    </section>
 
-    <div class="card">
-      <h2>Which places connect</h2>
-      <div id="reachBanner"></div>
-      <div class="tablewrap" id="reachWrap"></div>
-      <p class="caption">Warshall's algorithm. A filled cell means a vehicle can get from the row location to the column location by some chain of roads. One-way roads count in their own direction only.</p>
-    </div>
-
-    <div class="card">
-      <h2>Shortest distances (km)</h2>
-      <div class="tablewrap" id="distWrap"></div>
-      <p class="caption">Floyd-Warshall algorithm. Each cell is the shortest total distance from the row location to the column location.</p>
-    </div>
-  </section>
-
-  <!-- ROUTES -->
-  <section id="p-routes" class="panel" role="tabpanel" hidden>
-    <div class="card stack">
-      <h2>Shortest route</h2>
-      <div class="row">
-        <div style="flex:1 1 160px"><label for="rFrom">From</label><select id="rFrom"></select></div>
-        <div style="flex:1 1 160px"><label for="rTo">To</label><select id="rTo"></select></div>
-      </div>
-      <div id="routeOut" aria-live="polite"></div>
-    </div>
-  </section>
-
-  <!-- DISPATCH -->
-  <section id="p-dispatch" class="panel" role="tabpanel" hidden>
-    <div class="card stack">
-      <h2>Dispatch nearest vehicle</h2>
-      <div class="row">
-        <div style="flex:1 1 160px"><label for="dDest">Pickup location</label><select id="dDest"></select></div>
-        <div style="flex:1 1 160px"><label for="dDrop">Drop-off destination</label><select id="dDrop"></select></div>
-        <div style="flex:1 1 160px"><label for="dType">Vehicle type</label>
-          <select id="dType"><option value="any">Any</option><option value="0">Car</option><option value="1">Truck</option><option value="2">Bus</option><option value="3">Bike</option></select></div>
-      </div>
-      <div id="dTrip" aria-live="polite"></div>
-      <p id="dMsg" class="note" aria-live="polite"></p>
-      <div class="tablewrap">
-        <table>
-          <thead><tr><th class="num">#</th><th>Vehicle</th><th>Now at</th><th class="num">To pickup (km)</th><th class="num">Total trip (km)</th><th>Full route</th><th></th></tr></thead>
-          <tbody id="dispBody"></tbody>
-        </table>
-      </div>
-      <p class="caption">Only available vehicles are listed. The total trip is vehicle to pickup plus pickup to drop-off. Distances come from Floyd-Warshall and candidates are presorted by distance with merge sort. Assigning moves the vehicle to the drop-off and adds the whole trip to its mileage.</p>
-    </div>
-  </section>
-
-  <footer>
-    <span id="saveNote">Changes are saved in this browser.</span>
-    <button class="btn small ghost" id="resetBtn" type="button">Reset to sample data</button>
-  </footer>
+    <footer>
+      <span>Changes are saved in this browser.</span>
+      <button class="btn small ghost" id="resetBtn" type="button" hidden>Reset fleet and bookings to sample data</button>
+    </footer>
+  </div>
 </div>
 
 <script>
 (function () {
   var TYPES = ['Car', 'Truck', 'Bus', 'Bike'];
   var STATUS = ['Available', 'On trip', 'Maintenance'];
+  var RATES = [{ base: 60, perKm: 14 }, { base: 150, perKm: 28 }, { base: 200, perKm: 35 }, { base: 30, perKm: 7 }]; // rupees, illustrative
+  var AVG_SPEED = 45; // km/h used for time estimates
   var INF = 1e9;
-  var KEY = 'fleetdesk.v1';
+  var KEY = 'fleetdesk.v2', SESSION_KEY = 'fleetdesk.session';
   var MAX_LOC = 20;
+  var ROLE_TABS = {
+    admin: [['fleet', 'Fleet'], ['network', 'Road network'], ['routes', 'Shortest route'], ['dispatch', 'Dispatch'], ['bookings', 'Bookings'], ['users', 'Users']],
+    customer: [['book', 'Book a ride'], ['mine', 'My bookings'], ['routes', 'Route planner']]
+  };
 
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function fmt(n) { return Number(n).toLocaleString('en-IN'); }
+  function money(n) { return '₹' + fmt(n); }
+  function dur(m) { var h = Math.floor(m / 60), r = m % 60; return h ? h + ' h ' + r + ' min' : r + ' min'; }
+  function dateStr(t) { return new Date(t).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }); }
 
   /* ---------- data ---------- */
   function sample() {
     return {
-      dueAt: 80000, nextId: 7,
+      dueAt: 80000, nextId: 7, nextUserId: 1, nextBookingId: 1, users: [], bookings: [],
       locations: ['Delhi', 'Meerut', 'Bijnor', 'Haridwar', 'Dehradun', 'Moradabad'],
       roads: [[0,1,70],[1,0,70],[1,2,90],[2,1,90],[2,3,60],[3,2,60],[3,4,55],[4,3,55],[1,5,100],[5,1,100],[5,2,65],[2,5,65]]
         .map(function (r) { return { u: r[0], v: r[1], d: r[2] }; }),
@@ -330,15 +467,25 @@
       ]
     };
   }
-  var S = load();
   function load() {
+    var o = null;
     try {
       var raw = localStorage.getItem(KEY);
-      if (raw) { var o = JSON.parse(raw); if (o && o.vehicles && o.locations && o.roads) return o; }
-    } catch (e) {}
-    return sample();
+      if (raw) { o = JSON.parse(raw); }
+    } catch (e) { o = null; }
+    if (!o || !o.vehicles || !o.locations || !o.roads) o = sample();
+    if (!o.users) o.users = [];
+    if (!o.bookings) o.bookings = [];
+    if (!o.nextUserId) o.nextUserId = o.users.length + 1;
+    if (!o.nextBookingId) o.nextBookingId = o.bookings.length + 1;
+    if (!o.dueAt) o.dueAt = 80000;
+    return o;
   }
+  var S = load();
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+  var memSession = null;
+  function readSession() { try { return +localStorage.getItem(SESSION_KEY) || memSession; } catch (e) { return memSession; } }
+  function writeSession(id) { memSession = id; try { if (id) localStorage.setItem(SESSION_KEY, String(id)); else localStorage.removeItem(SESSION_KEY); } catch (e) {} }
 
   /* ---------- algorithms ---------- */
   function mergeSort(arr, cmp) {            // presorting
@@ -349,7 +496,7 @@
     while (j < r.length) out.push(r[j++]);
     return out;
   }
-  function binarySearch(sorted, key, cmpToKey) {   // cmpToKey(item) < 0 means item is before key
+  function binarySearch(sorted, cmpToKey) {   // cmpToKey(item) < 0 means item is before the key
     var lo = 0, hi = sorted.length - 1, steps = 0;
     while (lo <= hi) {
       steps++;
@@ -390,7 +537,7 @@
   function cmpPlate(a, b) { return a.plate < b.plate ? -1 : a.plate > b.plate ? 1 : 0; }
   function plateExists(p) {
     var sorted = mergeSort(S.vehicles, cmpPlate);
-    return binarySearch(sorted, p, function (v) { return v.plate < p ? -1 : v.plate > p ? 1 : 0; }).item !== null;
+    return binarySearch(sorted, function (v) { return v.plate < p ? -1 : v.plate > p ? 1 : 0; }).item !== null;
   }
   function plateHtml(v) { return '<span class="plate' + (v.type === 1 || v.type === 2 ? ' y' : '') + '">' + esc(v.plate) + '</span>'; }
   function opts(list, sel) { return list.map(function (t, i) { return '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join(''); }
@@ -403,11 +550,144 @@
     });
   }
   function say(id, text, kind) { var el = $(id); el.textContent = text; el.className = 'note' + (kind ? ' ' + kind : ''); }
+  function vehById(id) { for (var i = 0; i < S.vehicles.length; i++) if (S.vehicles[i].id === id) return S.vehicles[i]; return null; }
+  function legsHtml(p, a) {
+    var html = '<div class="legs">';
+    p.forEach(function (n, i) {
+      html += '<span class="chip">' + esc(S.locations[n]) + '</span>';
+      if (i < p.length - 1) html += '<span class="arrow">&rarr;</span><span class="km">' + a[n][p[i + 1]] + ' km</span><span class="arrow">&rarr;</span>';
+    });
+    return html + '</div>';
+  }
 
-  /* ---------- state ---------- */
-  var tab = 'fleet', hlId = null, pendingDel = null, dispatchNote = '', dispatchKind = '';
+  /* ---------- accounts ---------- */
+  var me = null;
+  function isAdmin() { return !!me && me.role === 'admin'; }
+  function userById(id) { for (var i = 0; i < S.users.length; i++) if (S.users[i].id === id) return S.users[i]; return null; }
+  function userByName(n) { n = n.toLowerCase(); for (var i = 0; i < S.users.length; i++) if (S.users[i].username === n) return S.users[i]; return null; }
+  function hex(buf) { return Array.prototype.map.call(new Uint8Array(buf), function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
+  function weakHash(str) {   // fallback when Web Crypto is unavailable (for example some file:// pages)
+    var h1 = 0xdeadbeef, h2 = 0x41c6ce57, i, ch, r;
+    for (r = 0; r < 2000; r++) for (i = 0; i < str.length; i++) {
+      ch = str.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return (h2 >>> 0).toString(16) + (h1 >>> 0).toString(16);
+  }
+  function hasSubtle() { return !!(window.crypto && window.crypto.subtle && window.TextEncoder); }
+  function newSalt() {
+    var a = new Uint8Array(16);
+    if (window.crypto && window.crypto.getRandomValues) window.crypto.getRandomValues(a);
+    else for (var i = 0; i < 16; i++) a[i] = Math.floor(Math.random() * 256);
+    return hex(a);
+  }
+  function hashPw(pw, salt, algo) {
+    if (algo === 'pbkdf2') {
+      var enc = new TextEncoder();
+      return crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveBits']).then(function (key) {
+        return crypto.subtle.deriveBits({ name: 'PBKDF2', salt: enc.encode(salt), iterations: 100000, hash: 'SHA-256' }, key, 256);
+      }).then(hex);
+    }
+    return Promise.resolve(weakHash(salt + ':' + pw));
+  }
+  function makeUser(name, username, pw, role) {
+    var algo = hasSubtle() ? 'pbkdf2' : 'weak', salt = newSalt();
+    return hashPw(pw, salt, algo).then(function (h) {
+      return { id: S.nextUserId++, name: name, username: username.toLowerCase(), role: role, algo: algo, salt: salt, hash: h, created: Date.now() };
+    });
+  }
+  function ensureUsers() {
+    if (S.users.length) return Promise.resolve();
+    return makeUser('Administrator', 'admin', 'admin123', 'admin').then(function (a) {
+      S.users.push(a);
+      return makeUser('Demo Customer', 'demo', 'demo123', 'customer');
+    }).then(function (c) { S.users.push(c); save(); });
+  }
 
-  /* ---------- fleet ---------- */
+  /* ---------- shell: auth, tabs ---------- */
+  var tab = null, pendingDel = null, pendingUserDel = null, hlId = null, dispatchNote = '', dispatchKind = '', resetArmed = false;
+
+  function authTab(t) {
+    document.querySelectorAll('[data-auth]').forEach(function (b) { b.setAttribute('aria-selected', b.getAttribute('data-auth') === t ? 'true' : 'false'); });
+    $('loginForm').hidden = t !== 'login';
+    $('regForm').hidden = t !== 'register';
+    say('authMsg', '', '');
+  }
+  document.querySelectorAll('[data-auth]').forEach(function (b) { b.addEventListener('click', function () { authTab(b.getAttribute('data-auth')); }); });
+  $('demoAdmin').addEventListener('click', function () { authTab('login'); $('lUser').value = 'admin'; $('lPass').value = 'admin123'; });
+  $('demoCust').addEventListener('click', function () { authTab('login'); $('lUser').value = 'demo'; $('lPass').value = 'demo123'; });
+
+  $('loginForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = $('lUser').value.trim(), pw = $('lPass').value, u = name ? userByName(name) : null;
+    if (!name || !pw) { say('authMsg', 'Enter your username and password.', 'err'); return; }
+    if (!u) { say('authMsg', 'Wrong username or password.', 'err'); return; }
+    if (u.algo === 'pbkdf2' && !hasSubtle()) { say('authMsg', 'This browser cannot check passwords here. Open the page over https.', 'err'); return; }
+    hashPw(pw, u.salt, u.algo).then(function (h) {
+      if (h !== u.hash) { say('authMsg', 'Wrong username or password.', 'err'); return; }
+      $('lPass').value = '';
+      writeSession(u.id); enter(u);
+    });
+  });
+  $('regForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = $('rName').value.trim().replace(/\s+/g, ' '), un = $('rUser').value.trim(), p1 = $('rPass').value, p2 = $('rPass2').value;
+    if (name.length < 2) { say('authMsg', 'Enter your full name.', 'err'); return; }
+    if (!/^[A-Za-z0-9_]{3,20}$/.test(un)) { say('authMsg', 'Username must be 3 to 20 letters, numbers or underscores.', 'err'); return; }
+    if (userByName(un)) { say('authMsg', 'That username is taken. Try another.', 'err'); return; }
+    if (p1.length < 6) { say('authMsg', 'Password must be at least 6 characters.', 'err'); return; }
+    if (p1 !== p2) { say('authMsg', 'The two passwords do not match.', 'err'); return; }
+    makeUser(name, un, p1, 'customer').then(function (u) {
+      S.users.push(u); save();
+      $('rPass').value = ''; $('rPass2').value = '';
+      writeSession(u.id); enter(u);
+    });
+  });
+  $('logoutBtn').addEventListener('click', function () {
+    me = null; writeSession(null); tab = null;
+    $('app').hidden = true; $('auth').hidden = false;
+    $('lUser').value = ''; $('lPass').value = ''; authTab('login');
+  });
+
+  function pendingCount() { return S.bookings.filter(function (b) { return b.status === 'Pending'; }).length; }
+  function renderTabs() {
+    var list = ROLE_TABS[me.role];
+    $('tabs').innerHTML = list.map(function (t) {
+      var badge = (t[0] === 'bookings' && pendingCount()) ? '<span class="badge">' + pendingCount() + '</span>' : '';
+      var on = t[0] === tab;
+      return '<button class="tab" role="tab" data-tab="' + t[0] + '" aria-selected="' + on + '" tabindex="' + (on ? 0 : -1) + '">' + t[1] + badge + '</button>';
+    }).join('');
+  }
+  function setTab(t) {
+    tab = t;
+    renderTabs();
+    document.querySelectorAll('.panel').forEach(function (p) { p.hidden = p.id !== 'p-' + t; });
+  }
+  $('tabs').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) setTab(b.getAttribute('data-tab')); });
+  $('tabs').addEventListener('keydown', function (e) {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    var names = ROLE_TABS[me.role].map(function (t) { return t[0]; }), i = names.indexOf(tab);
+    i = (i + (e.key === 'ArrowRight' ? 1 : names.length - 1)) % names.length;
+    setTab(names[i]); document.querySelector('[data-tab="' + names[i] + '"]').focus();
+  });
+
+  function enter(u) {
+    me = u;
+    $('auth').hidden = true; $('app').hidden = false;
+    $('whoName').textContent = u.name;
+    $('whoRole').textContent = u.role === 'admin' ? 'Admin' : 'Customer';
+    $('subLine').textContent = u.role === 'admin' ? 'Manage the fleet, roads, bookings and users.' : 'Book a ride and track your requests.';
+    $('resetBtn').hidden = u.role !== 'admin';
+    pendingDel = null; pendingUserDel = null;
+    fillSelects.done = false;
+    tab = null;
+    setTab(ROLE_TABS[u.role][0][0]);
+    renderAll();
+  }
+
+  /* ---------- fleet (admin) ---------- */
   function sortedVehicles() {
     var m = $('sortMode').value;
     if (m === 'plate') return mergeSort(S.vehicles, cmpPlate);
@@ -421,25 +701,21 @@
     var dueN = S.vehicles.filter(function (v) { return v.mileage >= due; }).length;
     function stat(n, l) { return '<div class="stat"><b>' + n + '</b><span>' + l + '</span></div>'; }
     $('stats').innerHTML = stat(S.vehicles.length, 'vehicles') + stat(cnt[0], 'available') + stat(cnt[1], 'on trip') + stat(cnt[2], 'in maintenance') + stat(dueN, 'due for service');
-
     var list = sortedVehicles();
     if (!list.length) { $('fleetBody').innerHTML = '<tr><td class="empty" colspan="8">No vehicles yet. Add the first one with the form.</td></tr>'; return; }
     $('fleetBody').innerHTML = list.map(function (v) {
       var p = pendingDel === v.id;
       return '<tr class="' + (v.id === hlId ? 'hl' : '') + '">' +
-        '<td class="num">' + v.id + '</td>' +
-        '<td>' + plateHtml(v) + '</td>' +
+        '<td class="num">' + v.id + '</td><td>' + plateHtml(v) + '</td>' +
         '<td>' + esc(v.model) + (v.mileage >= due ? ' <span class="pill st2">Service due</span>' : '') + '</td>' +
-        '<td>' + TYPES[v.type] + '</td>' +
-        '<td class="num">' + fmt(v.mileage) + '</td>' +
+        '<td>' + TYPES[v.type] + '</td><td class="num">' + fmt(v.mileage) + '</td>' +
         '<td><select data-act="status" data-id="' + v.id + '" aria-label="Status of vehicle ' + v.id + '">' + opts(STATUS, v.status) + '</select></td>' +
         '<td><select data-act="loc" data-id="' + v.id + '" aria-label="Location of vehicle ' + v.id + '">' + opts(S.locations, v.loc) + '</select></td>' +
         '<td class="right"><button class="btn small ' + (p ? 'danger' : 'ghost') + '" data-act="del" data-id="' + v.id + '">' + (p ? 'Confirm delete' : 'Delete') + '</button></td></tr>';
     }).join('');
   }
-  function vehById(id) { for (var i = 0; i < S.vehicles.length; i++) if (S.vehicles[i].id === id) return S.vehicles[i]; return null; }
-
   $('fleetBody').addEventListener('change', function (e) {
+    if (!isAdmin()) return;
     var t = e.target, act = t.getAttribute('data-act'); if (!act) return;
     var v = vehById(+t.getAttribute('data-id')); if (!v) return;
     if (act === 'status') v.status = +t.value;
@@ -447,6 +723,7 @@
     save(); renderAll();
   });
   $('fleetBody').addEventListener('click', function (e) {
+    if (!isAdmin()) return;
     var b = e.target.closest('[data-act="del"]'); if (!b) return;
     var id = +b.getAttribute('data-id');
     if (pendingDel !== id) { pendingDel = id; renderFleet(); return; }
@@ -454,19 +731,20 @@
     pendingDel = null; hlId = null; save(); say('findMsg', 'Vehicle ' + id + ' deleted.', ''); renderAll();
   });
   $('sortMode').addEventListener('change', renderFleet);
-  $('dueAt').addEventListener('input', function () { var n = parseInt(this.value, 10); S.dueAt = isNaN(n) ? 0 : n; save(); renderFleet(); });
+  $('dueAt').addEventListener('input', function () { if (!isAdmin()) return; var n = parseInt(this.value, 10); S.dueAt = isNaN(n) ? 0 : n; save(); renderFleet(); });
   $('findForm').addEventListener('submit', function (e) {
     e.preventDefault();
     var id = parseInt($('findId').value, 10);
     if (isNaN(id)) { say('findMsg', 'Enter a vehicle ID to look for.', 'err'); return; }
     var sorted = mergeSort(S.vehicles, function (a, b) { return a.id - b.id; });
-    var r = binarySearch(sorted, id, function (v) { return v.id - id; });
+    var r = binarySearch(sorted, function (v) { return v.id - id; });
     if (r.item) { hlId = id; say('findMsg', 'Vehicle ' + id + ' found in ' + r.steps + (r.steps === 1 ? ' step' : ' steps') + ' of binary search over ' + sorted.length + ' sorted records.', 'ok'); }
     else { hlId = null; say('findMsg', 'No vehicle has ID ' + id + '. Binary search checked ' + r.steps + (r.steps === 1 ? ' position.' : ' positions.'), 'err'); }
     renderFleet();
   });
   $('addForm').addEventListener('submit', function (e) {
     e.preventDefault();
+    if (!isAdmin()) return;
     var plate = normPlate($('fPlate').value), model = $('fModel').value.trim(), mileage = parseInt($('fMileage').value, 10);
     if (!plate) { say('addMsg', 'Enter a plate number.', 'err'); return; }
     if (!model) { say('addMsg', 'Enter the vehicle model.', 'err'); return; }
@@ -479,12 +757,11 @@
     say('addMsg', 'Added as vehicle ' + id + '.', 'ok'); renderAll();
   });
 
-  /* ---------- network ---------- */
+  /* ---------- network (admin) ---------- */
   function renderNetwork() {
     var perLoc = S.locations.map(function () { return 0; });
     S.vehicles.forEach(function (v) { if (perLoc[v.loc] !== undefined) perLoc[v.loc]++; });
     $('locChips').innerHTML = S.locations.map(function (n, i) { return '<span class="chip">' + esc(n) + '<small>' + perLoc[i] + ' veh.</small></span>'; }).join('');
-
     $('roadBody').innerHTML = S.roads.length ? S.roads.map(function (r, i) {
       return '<tr><td>' + esc(S.locations[r.u]) + '</td><td>' + esc(S.locations[r.v]) + '</td><td class="num">' + fmt(r.d) + '</td>' +
         '<td class="right"><button class="btn small ghost" data-road="' + i + '">Remove</button></td></tr>';
@@ -496,7 +773,7 @@
     for (i = 0; i < n; i++) {
       rows += '<tr><th class="rh" scope="row">' + esc(S.locations[i]) + '</th>';
       for (j = 0; j < n; j++) {
-        if (R[i][j]) rows += '<td class="' + (i === j ? 'on' : 'on') + '">1</td>';
+        if (R[i][j]) rows += '<td class="on">1</td>';
         else { rows += '<td class="off">0</td>'; unreach.push([i, j]); }
       }
       rows += '</tr>';
@@ -507,7 +784,6 @@
       var ex = unreach.slice(0, 3).map(function (p) { return S.locations[p[0]] + ' to ' + S.locations[p[1]]; }).join(', ');
       $('reachBanner').innerHTML = '<div class="banner bad">' + unreach.length + ' trip' + (unreach.length === 1 ? ' has' : 's have') + ' no route, for example ' + esc(ex) + '.</div>';
     }
-
     var F = floyd(), drows = '';
     for (i = 0; i < n; i++) {
       drows += '<tr><th class="rh" scope="row">' + esc(S.locations[i]) + '</th>';
@@ -520,11 +796,13 @@
     $('distWrap').innerHTML = '<table class="matrix"><thead>' + head + '</thead><tbody>' + drows + '</tbody></table>';
   }
   $('roadBody').addEventListener('click', function (e) {
+    if (!isAdmin()) return;
     var b = e.target.closest('[data-road]'); if (!b) return;
     S.roads.splice(+b.getAttribute('data-road'), 1); save(); renderAll();
   });
   $('locForm').addEventListener('submit', function (e) {
     e.preventDefault();
+    if (!isAdmin()) return;
     var name = $('nName').value.trim();
     if (!name) { say('locMsg', 'Enter a location name.', 'err'); return; }
     if (S.locations.length >= MAX_LOC) { say('locMsg', 'The network holds up to ' + MAX_LOC + ' locations.', 'err'); return; }
@@ -533,6 +811,7 @@
   });
   $('roadForm').addEventListener('submit', function (e) {
     e.preventDefault();
+    if (!isAdmin()) return;
     var u = +$('nFrom').value, v = +$('nTo').value, d = parseInt($('nKm').value, 10), two = $('nTwo').checked;
     if (u === v) { say('roadMsg', 'Choose two different locations.', 'err'); return; }
     if (isNaN(d) || d < 1) { say('roadMsg', 'Distance must be at least 1 km.', 'err'); return; }
@@ -544,29 +823,19 @@
     save(); say('roadMsg', 'Road ' + S.locations[u] + (two ? ' <-> ' : ' -> ') + S.locations[v] + ' saved at ' + d + ' km.', 'ok'); renderAll();
   });
 
-  /* ---------- routes ---------- */
+  /* ---------- routes (both roles) ---------- */
   function renderRoute() {
     var u = +$('rFrom').value, v = +$('rTo').value, out = $('routeOut');
     if (isNaN(u) || isNaN(v)) { out.innerHTML = ''; return; }
     var F = floyd(), p = pathOf(F.next, u, v);
     if (!p) { out.innerHTML = '<div class="banner bad">No route from ' + esc(S.locations[u]) + ' to ' + esc(S.locations[v]) + '. Add a road to connect them.</div>'; return; }
-    var a = buildAdj(), html = '<div class="route-total">' + fmt(F.dist[u][v]) + '<small>km</small></div><div class="legs">';
-    p.forEach(function (n, i) {
-      html += '<span class="chip">' + esc(S.locations[n]) + '</span>';
-      if (i < p.length - 1) html += '<span class="arrow">&rarr;</span><span class="km">' + a[n][p[i + 1]] + ' km</span><span class="arrow">&rarr;</span>';
-    });
-    out.innerHTML = html + '</div>' + (p.length === 1 ? '<p class="caption">Start and end are the same place.</p>' : '<p class="caption">' + (p.length - 1) + ' road' + (p.length === 2 ? '' : 's') + ' on the way.</p>');
+    out.innerHTML = '<div class="route-total">' + fmt(F.dist[u][v]) + '<small>km</small></div>' + legsHtml(p, buildAdj()) +
+      (p.length === 1 ? '<p class="caption">Start and end are the same place.</p>' : '<p class="caption">' + (p.length - 1) + ' road' + (p.length === 2 ? '' : 's') + ' on the way.</p>');
   }
+  $('rFrom').addEventListener('change', renderRoute);
+  $('rTo').addEventListener('change', renderRoute);
 
-  /* ---------- dispatch ---------- */
-  function legsHtml(p, a) {
-    var html = '<div class="legs">';
-    p.forEach(function (n, i) {
-      html += '<span class="chip">' + esc(S.locations[n]) + '</span>';
-      if (i < p.length - 1) html += '<span class="arrow">&rarr;</span><span class="km">' + a[n][p[i + 1]] + ' km</span><span class="arrow">&rarr;</span>';
-    });
-    return html + '</div>';
-  }
+  /* ---------- dispatch (admin) ---------- */
   function dispatchInputs() {
     var pick = +$('dDest').value, drop = +$('dDrop').value;
     return { pick: pick, drop: drop, hasDrop: drop >= 0 && drop !== pick, type: $('dType').value };
@@ -611,6 +880,7 @@
     body.innerHTML = html;
   }
   $('dispBody').addEventListener('click', function (e) {
+    if (!isAdmin()) return;
     var b = e.target.closest('[data-assign]'); if (!b) return;
     var v = vehById(+b.getAttribute('data-assign')), q = dispatchInputs(); if (!v) return;
     var F = floyd(), d1 = F.dist[v.loc][q.pick], d2 = q.hasDrop ? F.dist[q.pick][q.drop] : 0;
@@ -625,12 +895,128 @@
   ['dDest', 'dDrop', 'dType'].forEach(function (id) {
     $(id).addEventListener('change', function () { dispatchNote = ''; renderDispatch(); });
   });
-  $('rFrom').addEventListener('change', renderRoute);
-  $('rTo').addEventListener('change', renderRoute);
 
-  /* ---------- selects, tabs, reset ---------- */
+  /* ---------- bookings: customer ---------- */
+  function quote(pick, drop, type) {
+    if (isNaN(pick) || isNaN(drop)) return { error: 'Choose a pickup and a drop-off.' };
+    if (pick === drop) return { error: 'Pickup and drop-off must be different places.' };
+    var F = floyd(), p = pathOf(F.next, pick, drop);
+    if (!p) return { error: 'There is no road route from ' + S.locations[pick] + ' to ' + S.locations[drop] + '.' };
+    var km = F.dist[pick][drop], r = RATES[type];
+    var avail = S.vehicles.filter(function (v) { return v.status === 0 && v.type === type && F.dist[v.loc][pick] < INF; }).length;
+    return { km: km, path: p, fare: Math.round(r.base + r.perKm * km), mins: Math.round(km / AVG_SPEED * 60), avail: avail };
+  }
+  function renderBook() {
+    var pick = +$('bPick').value, drop = +$('bDrop').value, type = +$('bType').value;
+    var q = quote(pick, drop, type), box = $('bQuote');
+    $('bSubmit').disabled = !!q.error;
+    if (q.error) { box.innerHTML = '<div class="banner bad">' + esc(q.error) + '</div>'; return; }
+    box.innerHTML = '<div class="route-total">' + money(q.fare) + '<small>estimated fare</small></div>' + legsHtml(q.path, buildAdj()) +
+      '<div class="qmeta"><span>Distance <b>' + fmt(q.km) + ' km</b></span><span>Travel time about <b>' + dur(q.mins) + '</b></span><span><b>' + q.avail + '</b> ' + TYPES[type].toLowerCase() + (q.avail === 1 ? '' : 's') + ' available now</span></div>' +
+      '<p class="caption">Fare is ' + money(RATES[type].base) + ' plus ' + money(RATES[type].perKm) + ' per km. Time assumes an average of ' + AVG_SPEED + ' km/h. Both are estimates.</p>';
+  }
+  ['bPick', 'bDrop', 'bType'].forEach(function (id) { $(id).addEventListener('change', function () { say('bMsg', '', ''); renderBook(); }); });
+  $('bookForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!me) return;
+    var pick = +$('bPick').value, drop = +$('bDrop').value, type = +$('bType').value, q = quote(pick, drop, type);
+    if (q.error) { say('bMsg', q.error, 'err'); return; }
+    var b = { id: S.nextBookingId++, userId: me.id, userName: me.name, pick: pick, drop: drop, pickName: S.locations[pick], dropName: S.locations[drop],
+      type: type, km: q.km, fare: q.fare, status: 'Pending', vehicleId: null, plate: '', created: Date.now() };
+    S.bookings.push(b); save();
+    say('bMsg', 'Booking #' + b.id + ' requested. You can follow it under My bookings.', 'ok');
+    renderAll();
+  });
+  function stClass(s) { return s === 'Pending' ? 'st1' : s === 'Approved' ? 'st0' : s === 'Completed' ? 'st3' : 'st2'; }
+  function bookingById(id) { for (var i = 0; i < S.bookings.length; i++) if (S.bookings[i].id === id) return S.bookings[i]; return null; }
+  function plateOfBooking(b) {
+    if (!b.plate) return '-';
+    var v = vehById(b.vehicleId);
+    return v ? plateHtml(v) : '<span class="plate">' + esc(b.plate) + '</span>';
+  }
+  function renderMine() {
+    var mine = mergeSort(S.bookings.filter(function (b) { return b.userId === me.id; }), function (a, b) { return b.created - a.created; });
+    $('mineBody').innerHTML = mine.length ? mine.map(function (b) {
+      return '<tr><td class="num">' + b.id + '</td><td>' + esc(b.pickName) + ' → ' + esc(b.dropName) + '</td><td>' + TYPES[b.type] + '</td>' +
+        '<td class="num">' + fmt(b.km) + '</td><td class="num">' + money(b.fare) + '</td>' +
+        '<td><span class="pill ' + stClass(b.status) + '">' + b.status + '</span></td><td>' + plateOfBooking(b) + '</td><td>' + dateStr(b.created) + '</td>' +
+        '<td class="right">' + (b.status === 'Pending' ? '<button class="btn small ghost" data-cancel="' + b.id + '">Cancel</button>' : '') + '</td></tr>';
+    }).join('') : '<tr><td class="empty" colspan="9">No bookings yet. Request your first ride from Book a ride.</td></tr>';
+  }
+  $('mineBody').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-cancel]'); if (!b || !me) return;
+    var bk = bookingById(+b.getAttribute('data-cancel'));
+    if (!bk || bk.userId !== me.id || bk.status !== 'Pending') return;
+    bk.status = 'Cancelled'; save(); say('mMsg', 'Booking #' + bk.id + ' cancelled.', ''); renderAll();
+  });
+
+  /* ---------- bookings: admin ---------- */
+  function renderAdminBookings() {
+    var list = mergeSort(S.bookings, function (a, b) {
+      var pa = a.status === 'Pending' ? 0 : 1, pb = b.status === 'Pending' ? 0 : 1;
+      return pa - pb || b.created - a.created;
+    });
+    $('abBody').innerHTML = list.length ? list.map(function (b) {
+      var act = '';
+      if (b.status === 'Pending') act = '<button class="btn small primary" data-bk="approve" data-id="' + b.id + '">Approve</button><button class="btn small ghost" data-bk="reject" data-id="' + b.id + '">Reject</button>';
+      else if (b.status === 'Approved') act = '<button class="btn small" data-bk="complete" data-id="' + b.id + '">Mark completed</button>';
+      return '<tr><td class="num">' + b.id + '</td><td>' + esc(b.userName) + '</td><td>' + esc(b.pickName) + ' → ' + esc(b.dropName) + '</td><td>' + TYPES[b.type] + '</td>' +
+        '<td class="num">' + fmt(b.km) + '</td><td class="num">' + money(b.fare) + '</td><td><span class="pill ' + stClass(b.status) + '">' + b.status + '</span></td>' +
+        '<td>' + plateOfBooking(b) + '</td><td class="right"><div class="actions">' + act + '</div></td></tr>';
+    }).join('') : '<tr><td class="empty" colspan="9">No booking requests yet. They appear here when customers book a ride.</td></tr>';
+  }
+  $('abBody').addEventListener('click', function (e) {
+    if (!isAdmin()) return;
+    var btn = e.target.closest('[data-bk]'); if (!btn) return;
+    var b = bookingById(+btn.getAttribute('data-id')), act = btn.getAttribute('data-bk');
+    if (!b) return;
+    if (act === 'reject' && b.status === 'Pending') { b.status = 'Rejected'; save(); say('abMsg', 'Booking #' + b.id + ' rejected.', ''); renderAll(); return; }
+    if (act === 'complete' && b.status === 'Approved') {
+      b.status = 'Completed';
+      var cv = vehById(b.vehicleId); if (cv && cv.status === 1) cv.status = 0;
+      save(); say('abMsg', 'Booking #' + b.id + ' completed. The vehicle is available again.', 'ok'); renderAll(); return;
+    }
+    if (act === 'approve' && b.status === 'Pending') {
+      var F = floyd(), leg = F.dist[b.pick][b.drop];
+      if (leg >= INF) { say('abMsg', 'No road route from ' + b.pickName + ' to ' + b.dropName + ' any more. Add a road first.', 'err'); return; }
+      var pool = S.vehicles.filter(function (v) { return v.status === 0 && v.type === b.type && F.dist[v.loc][b.pick] < INF; });
+      if (!pool.length) { say('abMsg', 'No available ' + TYPES[b.type].toLowerCase() + ' can reach ' + b.pickName + ' right now.', 'err'); return; }
+      var v = mergeSort(pool, function (x, y) { return F.dist[x.loc][b.pick] - F.dist[y.loc][b.pick] || x.id - y.id; })[0];
+      var d1 = F.dist[v.loc][b.pick];
+      v.mileage += d1 + leg; v.loc = b.drop; v.status = 1;
+      b.status = 'Approved'; b.vehicleId = v.id; b.plate = v.plate;
+      save(); say('abMsg', 'Booking #' + b.id + ' approved. ' + v.plate + ' is ' + fmt(d1) + ' km from pickup and covers ' + fmt(d1 + leg) + ' km in total.', 'ok'); renderAll();
+    }
+  });
+
+  /* ---------- users (admin) ---------- */
+  function renderUsers() {
+    var list = mergeSort(S.users, function (a, b) { return (a.role === 'admin' ? 0 : 1) - (b.role === 'admin' ? 0 : 1) || a.name.localeCompare(b.name); });
+    $('userBody').innerHTML = list.map(function (u) {
+      var self = me && u.id === me.id, n = S.bookings.filter(function (b) { return b.userId === u.id; }).length, p = pendingUserDel === u.id;
+      var act = self ? '<span class="pill st3">You</span>' :
+        '<button class="btn small" data-u="role" data-id="' + u.id + '">' + (u.role === 'admin' ? 'Make customer' : 'Make admin') + '</button>' +
+        '<button class="btn small ' + (p ? 'danger' : 'ghost') + '" data-u="del" data-id="' + u.id + '">' + (p ? 'Confirm delete' : 'Delete') + '</button>';
+      return '<tr><td>' + esc(u.name) + '</td><td><code>' + esc(u.username) + '</code></td><td><span class="pill ' + (u.role === 'admin' ? 'st1' : 'st0') + '">' + (u.role === 'admin' ? 'Admin' : 'Customer') + '</span></td>' +
+        '<td>' + dateStr(u.created) + '</td><td class="num">' + n + '</td><td class="right"><div class="actions">' + act + '</div></td></tr>';
+    }).join('');
+  }
+  $('userBody').addEventListener('click', function (e) {
+    if (!isAdmin()) return;
+    var btn = e.target.closest('[data-u]'); if (!btn) return;
+    var u = userById(+btn.getAttribute('data-id')), act = btn.getAttribute('data-u');
+    if (!u || u.id === me.id) return;
+    if (act === 'role') { u.role = u.role === 'admin' ? 'customer' : 'admin'; pendingUserDel = null; save(); say('uMsg', u.name + ' is now ' + (u.role === 'admin' ? 'an admin.' : 'a customer.'), 'ok'); renderAll(); return; }
+    if (act === 'del') {
+      if (pendingUserDel !== u.id) { pendingUserDel = u.id; renderUsers(); return; }
+      S.users = S.users.filter(function (x) { return x.id !== u.id; });
+      pendingUserDel = null; save(); say('uMsg', u.name + ' was removed.', ''); renderAll();
+    }
+  });
+
+  /* ---------- selects, render, reset ---------- */
   function fillSelects() {
-    ['fLoc', 'nFrom', 'nTo', 'rFrom', 'rTo', 'dDest'].forEach(function (id) {
+    ['fLoc', 'nFrom', 'nTo', 'rFrom', 'rTo', 'dDest', 'bPick', 'bDrop'].forEach(function (id) {
       var el = $(id), prev = el.value;
       el.innerHTML = S.locations.map(function (n, i) { return '<option value="' + i + '">' + esc(n) + '</option>'; }).join('');
       if (prev !== '' && +prev < S.locations.length) el.value = prev;
@@ -639,38 +1025,37 @@
     dd.innerHTML = '<option value="-1">No drop-off (pickup only)</option>' +
       S.locations.map(function (n, i) { return '<option value="' + i + '">' + esc(n) + '</option>'; }).join('');
     if (prevDrop !== '' && +prevDrop < S.locations.length) dd.value = prevDrop;
-    if (S.locations.length > 1) {
-      if (!fillSelects.done) {
-        $('nTo').value = '1'; $('rTo').value = String(Math.min(4, S.locations.length - 1));
-        dd.value = String(Math.min(4, S.locations.length - 1));
-        fillSelects.done = true;
-      }
+    var bt = $('bType'), prevT = bt.value;
+    bt.innerHTML = TYPES.map(function (t, i) { return '<option value="' + i + '">' + t + ' · ' + money(RATES[i].perKm) + '/km</option>'; }).join('');
+    if (prevT !== '') bt.value = prevT;
+    if (S.locations.length > 1 && !fillSelects.done) {
+      var far = String(Math.min(4, S.locations.length - 1));
+      $('nTo').value = '1'; $('rTo').value = far; dd.value = far; $('bDrop').value = far;
+      fillSelects.done = true;
     }
   }
-  function renderAll() { fillSelects(); renderFleet(); renderNetwork(); renderRoute(); renderDispatch(); }
-
-  function setTab(t) {
-    tab = t;
-    document.querySelectorAll('[data-tab]').forEach(function (b) { var on = b.getAttribute('data-tab') === t; b.setAttribute('aria-selected', on ? 'true' : 'false'); b.tabIndex = on ? 0 : -1; });
-    document.querySelectorAll('.panel').forEach(function (p) { p.hidden = p.id !== 'p-' + t; });
+  function renderAll() {
+    if (!me) return;
+    fillSelects();
+    renderTabs();
+    renderRoute();
+    if (isAdmin()) { renderFleet(); renderNetwork(); renderDispatch(); renderAdminBookings(); renderUsers(); }
+    else { renderBook(); renderMine(); }
   }
-  $('tabs').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) setTab(b.getAttribute('data-tab')); });
-  $('tabs').addEventListener('keydown', function (e) {
-    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-    var names = ['fleet', 'network', 'routes', 'dispatch'], i = names.indexOf(tab);
-    i = (i + (e.key === 'ArrowRight' ? 1 : names.length - 1)) % names.length;
-    setTab(names[i]); document.querySelector('[data-tab="' + names[i] + '"]').focus();
-  });
-
-  var resetArmed = false;
   $('resetBtn').addEventListener('click', function () {
+    if (!isAdmin()) return;
     if (!resetArmed) { resetArmed = true; this.textContent = 'Click again to confirm reset'; return; }
-    resetArmed = false; this.textContent = 'Reset to sample data';
-    S = sample(); save(); hlId = null; pendingDel = null; dispatchNote = ''; fillSelects.done = false;
+    resetArmed = false; this.textContent = 'Reset fleet and bookings to sample data';
+    var fresh = sample(); fresh.users = S.users; fresh.nextUserId = S.nextUserId;
+    S = fresh; save(); hlId = null; pendingDel = null; dispatchNote = ''; fillSelects.done = false;
     $('dueAt').value = S.dueAt; say('findMsg', 'Sample data restored.', ''); renderAll();
   });
 
-  $('dueAt').value = S.dueAt || 80000; if (!S.dueAt) S.dueAt = 80000;
-  renderAll();
+  /* ---------- start ---------- */
+  $('dueAt').value = S.dueAt;
+  ensureUsers().then(function () {
+    var sid = readSession(), u = sid ? userById(sid) : null;
+    if (u) enter(u); else { writeSession(null); $('auth').hidden = false; authTab('login'); }
+  });
 })();
 </script>
